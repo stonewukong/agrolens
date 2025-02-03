@@ -50,7 +50,7 @@ export default function SignIn() {
     <SafeAreaView className="flex-1 bg-lima-600">
       <ImageBackground
         source={require('../assets/images/texture2.jpg')}
-        className="absolute w-full h-full opacity-80"
+        className="absolute w-full h-full opacity-70"
         resizeMode="cover"
       />
       <StatusBar
@@ -67,26 +67,19 @@ export default function SignIn() {
           <View className="relative">
             <Image
               source={require('../assets/images/logo-rounded.png')}
-              className="aspect-video size-28 relative"
+              className="aspect-video size-28"
               resizeMode="contain"
             />
           </View>
         </View>
 
         {/* Bottom Sheet Style Container */}
-        <LinearGradient
-          colors={
-            isKeyboardVisible
-              ? ['#ffffff', '#ffffff']
-              : ['rgba(255,255,255,0.92)', 'rgba(255,255,255,0.98)']
-          }
-          className="rounded-t-[32px] shadow-2xl shadow-black/15"
-        >
-          <View className="pt-8 px-8 pb-6">
+        <View className="rounded-t-[64px] bg-white  shadow-2xl shadow-black/15">
+          <View className="pt-10 px-8 pb-6">
             {/* Header Text */}
             <View className="mb-10 text-center">
               <Text className="text-3xl tracking-tight text-center font-bold text-lima-700 mb-2">
-                Welcome Back
+                Get Started 🌿
               </Text>
               <Text className="text-lima-600 text-sm text-center leading-relaxed">
                 Sign in to continue your journey
@@ -100,9 +93,9 @@ export default function SignIn() {
                 <Text className="text-[13px] font-medium text-lima-700 ml-0.5">
                   Email address
                 </Text>
-                <View className="bg-lima-50/80 rounded-xl border border-lima-100 shadow-sm">
+                <View className="bg-lima-50 rounded-xl border border-lima-100  shadow-sm">
                   <TextInput
-                    className="w-full px-4 py-3.5 text-[15px] text-lima-700"
+                    className="w-full px-4 py-3.5 bg-transparent placeholder:text-lima-700   "
                     placeholder="name@example.com"
                     value={email}
                     onChangeText={setEmail}
@@ -119,10 +112,10 @@ export default function SignIn() {
                 <Text className="text-[13px] font-medium text-lima-700 ml-0.5">
                   Password
                 </Text>
-                <View className="bg-lima-50/80 rounded-xl border border-lima-100 shadow-sm">
+                <View className="bg-lima-50 rounded-xl border border-lima-100 shadow-sm">
                   <TextInput
-                    className="w-full px-4 py-3.5 text-[15px] text-lima-700"
-                    placeholder="Enter your password"
+                    className="w-full px-4 py-3.5 bg-transparent  placeholder:text-lima-700 "
+                    placeholder="********"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -196,7 +189,7 @@ export default function SignIn() {
               <Text className="text-lima-700 font-medium">Privacy Policy</Text>
             </Text>
           </View>
-        </LinearGradient>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
