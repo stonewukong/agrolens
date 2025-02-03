@@ -29,13 +29,15 @@
         {
           "image": "./assets/images/agrolens-dark.png",
           "resizeMode": "contain",
-          "backgroundColor": "#1d4b0b",
-          "enableFullScreenImage_legacy": true
+          "backgroundColor": "#ffffff"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ]
   }
 }

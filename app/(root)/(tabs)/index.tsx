@@ -1,17 +1,28 @@
-import { Text, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Text, View, Pressable } from 'react-native';
 
 export default function Index() {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      <Text className="text-7xl text-center text-red-500">
-        Edit app/index.tsx to edit this screen.
+    <View className="flex-1 justify-center items-center p-4 gap-y-4">
+      <Text className="text-3xl font-bold text-lima-400 mb-8">
+        Welcome to AgroLens
       </Text>
+
+      <Link href="/profile" asChild>
+        <Pressable className="w-64 bg-lima-400 p-4 rounded-lg">
+          <Text className="text-white text-center font-semibold text-lg">
+            Go to Profile
+          </Text>
+        </Pressable>
+      </Link>
+
+      <Link href="/sign-in" asChild>
+        <Pressable className="w-64 bg-lima-400 p-4 rounded-lg">
+          <Text className="text-white text-center font-semibold text-lg">
+            Sign In
+          </Text>
+        </Pressable>
+      </Link>
     </View>
   );
 }
