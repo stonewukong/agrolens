@@ -16,10 +16,10 @@ export default function Index() {
         </Pressable>
       </Link>
 
-      <Link href="/sign-in" asChild>
+      <Link href="/sign-up" asChild>
         <Pressable className="w-64 bg-lima-400 p-4 rounded-lg">
           <Text className="text-white text-center font-semibold text-lg">
-            Sign In
+            Sign Up
           </Text>
         </Pressable>
       </Link>

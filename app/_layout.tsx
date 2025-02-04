@@ -21,7 +21,7 @@ export default function RootLayout() {
     >
       <Stack.Screen name="(root)" options={{ headerShown: false }} />
       <Stack.Screen
-        name="sign-in"
+        name="sign-up"
         options={{
           headerShown: false,
           presentation: 'fullScreenModal',
