@@ -20,7 +20,7 @@ type AuthScreenProps = {
 };
 
 export default function AuthScreen({ isSignUp }: AuthScreenProps) {
-  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -47,16 +47,8 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
     };
   }, []);
 
-  const handlePhoneChange = (text: string) => {
-    // Format phone number to always have +91
-    const digits = text.replace(/\D/g, '');
-    if (digits.length <= 10) {
-      setPhoneNumber(digits.length === 10 ? `+91${digits}` : digits);
-    }
-  };
-
   const handleAuth = async () => {
-    if (!phoneNumber || !password) {
+    if (!email || !password) {
       alert('Please fill in all fields');
       return;
     }
@@ -64,11 +56,17 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
     setLoading(true);
     try {
       if (isSignUp) {
-        // Sign up with phone and password
+        // Sign up with email and password
         const { data: authData, error: authError } = await supabase.auth.signUp(
           {
-            phone: phoneNumber,
-            password: password,
+            email,
+            password,
+            options: {
+              data: {
+                email: email,
+              },
+              emailRedirectTo: undefined, // Remove email redirect
+            },
           }
         );
 
@@ -81,20 +79,37 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
             .insert([
               {
                 id: authData.user.id,
-                phone: phoneNumber,
+                email: email,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
               },
-            ]);
+            ])
+            .select()
+            .single();
 
-          if (profileError) throw profileError;
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            throw profileError;
+          }
 
-          console.log('Signed up:', authData.user);
+          // After signup, immediately sign in
+          const { error: signInError } = await supabase.auth.signInWithPassword(
+            {
+              email,
+              password,
+            }
+          );
+
+          if (signInError) throw signInError;
+
+          console.log('Signed up and logged in successfully:', authData.user);
           router.push('/(tabs)');
         }
       } else {
-        // Sign in with phone and password
+        // Sign in with email and password
         const { data, error } = await supabase.auth.signInWithPassword({
-          phone: phoneNumber,
-          password: password,
+          email,
+          password,
         });
 
         if (error) throw error;
@@ -107,12 +122,15 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
       }
     } catch (error) {
       console.error('Authentication error:', error);
+      alert(
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleNavigation = (route: '/sign-in' | '/sign-up') => {
+  const handleNavigation = (route: '/(auth)/sign-in' | '/(auth)/sign-up') => {
     router.push(route);
   };
 
@@ -162,53 +180,50 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
 
             {/* Form Section */}
             <View className="gap-4">
-              {/* Phone Number Input */}
+              {/* Email Input */}
               <View className="gap-2">
                 <Text className="text-[13px] font-medium text-lima-700 ml-0.5">
-                  Phone Number
+                  Email Address
                 </Text>
                 <View className="bg-lima-50 rounded-xl border border-lima-100 shadow-sm">
                   <TextInput
                     className="w-full px-4 py-3.5 bg-transparent text-lima-900"
-                    placeholder="+919876543210"
-                    value={phoneNumber}
-                    onChangeText={handlePhoneChange}
-                    keyboardType="phone-pad"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
                     autoCapitalize="none"
-                    autoComplete="tel"
-                    maxLength={13}
+                    autoComplete="email"
                     placeholderTextColor="#476a21"
                   />
                 </View>
               </View>
 
-              {/* Password Input - Only show for sign up */}
-              {isSignUp && (
-                <View className="gap-2">
-                  <Text className="text-[13px] font-medium text-lima-700 ml-0.5">
-                    Password
-                  </Text>
-                  <View className="bg-lima-50 rounded-xl border border-lima-100 shadow-sm flex-row items-center">
-                    <TextInput
-                      className="flex-1 px-4 py-3.5 bg-transparent text-lima-900"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      autoCapitalize="none"
-                      placeholderTextColor="#476a21"
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      className="px-4"
-                    >
-                      <Text className="text-lima-700">
-                        {showPassword ? 'Hide' : 'Show'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+              {/* Password Input */}
+              <View className="gap-2">
+                <Text className="text-[13px] font-medium text-lima-700 ml-0.5">
+                  Password
+                </Text>
+                <View className="bg-lima-50 rounded-xl border border-lima-100 shadow-sm flex-row items-center">
+                  <TextInput
+                    className="flex-1 px-4 py-3.5 bg-transparent text-lima-900"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    placeholderTextColor="#476a21"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    className="px-4"
+                  >
+                    <Text className="text-lima-700">
+                      {showPassword ? 'Hide' : 'Show'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              )}
+              </View>
 
               <TouchableOpacity
                 onPress={handleAuth}
@@ -233,7 +248,9 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
               </Text>
               <TouchableOpacity
                 onPress={() =>
-                  handleNavigation(isSignUp ? '/sign-in' : '/sign-up')
+                  handleNavigation(
+                    isSignUp ? '/(auth)/sign-in' : '/(auth)/sign-up'
+                  )
                 }
               >
                 <Text className="text-lima-700 underline font-semibold text-[15px]">
