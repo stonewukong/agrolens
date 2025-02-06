@@ -2,19 +2,26 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
-  StatusBar,
+  TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useProfile from '@/app/hooks/useProfile';
 import { supabase } from '@/utils/SupaLegend';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { getDisplayInitial, getDisplayName } from '@/app/utils/nameUtils';
 
 export default function ProfileScreen() {
-  const { profile, user, loading, error } = useProfile();
+  const { profile, user, loading } = useProfile();
   const router = useRouter();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 2000);
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -29,160 +36,208 @@ export default function ProfileScreen() {
     );
   }
 
-  if (error) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <Text className="text-red-600">Error: {error}</Text>
-      </View>
-    );
-  }
-
-  if (!profile || !user) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <Text className="text-lima-600">No profile data available</Text>
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
-      <ScrollView className="flex-1">
-        {/* Header */}
-        <View className="px-6 pt-4 pb-6 border-b border-gray-100">
-          <Text className="text-2xl font-bold text-gray-900">Profile</Text>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        className="flex-1"
+      >
+        {/* Profile Header */}
+        <View className="px-6 pt-4 pb-8">
+          <Text className="text-2xl font-bold text-gray-900 mb-6">Profile</Text>
+          <View className="items-center">
+            <View className="size-24 rounded-full bg-gray-100 items-center justify-center mb-4">
+              <Text className="text-gray-700 font-bold text-4xl">
+                {getDisplayInitial(profile?.full_name)}
+              </Text>
+            </View>
+            <Text className="text-xl font-semibold text-gray-900">
+              {getDisplayName(profile?.full_name)}
+            </Text>
+            <Text className="text-sm text-gray-500 mt-1">{profile?.email}</Text>
+            <Text className="text-xs text-gray-500 mt-2">
+              Member since{' '}
+              {new Date(profile?.created_at || '').toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </Text>
+          </View>
         </View>
 
-        {/* Stats Cards */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="px-4 py-6"
-        >
+        {/* Stats Overview */}
+        <View className="px-6 mb-8">
           <View className="flex-row gap-4">
-            <View className="bg-lima-50 p-4 rounded-2xl w-36">
-              <MaterialCommunityIcons name="sprout" size={24} color="#65a30d" />
-              <Text className="text-2xl font-bold text-lima-700 mt-2">24</Text>
-              <Text className="text-sm text-lima-600">Crops Tracked</Text>
+            <View className="flex-1 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <View className="flex-row justify-between items-start">
+                <View>
+                  <Text className="text-3xl font-bold text-gray-900">24</Text>
+                  <Text className="text-sm text-gray-600">Days Active</Text>
+                </View>
+                <View className="bg-white p-2 rounded-xl shadow-sm">
+                  <MaterialCommunityIcons
+                    name="calendar-check"
+                    size={24}
+                    color="#4b5563"
+                  />
+                </View>
+              </View>
             </View>
-
-            <View className="bg-lime-50 p-4 rounded-2xl w-36">
-              <MaterialCommunityIcons
-                name="weather-sunny"
-                size={24}
-                color="#65a30d"
-              />
-              <Text className="text-2xl font-bold text-lima-700 mt-2">156</Text>
-              <Text className="text-sm text-lima-600">Weather Alerts</Text>
-            </View>
-
-            <View className="bg-green-50 p-4 rounded-2xl w-36">
-              <MaterialCommunityIcons
-                name="chart-line"
-                size={24}
-                color="#65a30d"
-              />
-              <Text className="text-2xl font-bold text-lima-700 mt-2">85%</Text>
-              <Text className="text-sm text-lima-600">Yield Rate</Text>
+            <View className="flex-1 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <View className="flex-row justify-between items-start">
+                <View>
+                  <Text className="text-3xl font-bold text-gray-900">85%</Text>
+                  <Text className="text-sm text-gray-600">Success Rate</Text>
+                </View>
+                <View className="bg-white p-2 rounded-xl shadow-sm">
+                  <MaterialCommunityIcons
+                    name="trending-up"
+                    size={24}
+                    color="#4b5563"
+                  />
+                </View>
+              </View>
             </View>
           </View>
-        </ScrollView>
+        </View>
 
-        {/* Main Content */}
-        <View className="px-6 py-4">
-          {/* Profile Section */}
+        {/* Settings Sections */}
+        <View className="px-6">
+          {/* Account Settings */}
           <View className="mb-8">
-            <View className="flex-row items-center justify-between mb-6">
-              <View>
-                <Text className="text-lg font-semibold text-gray-900">
-                  {profile?.email?.split('@')[0]}
-                </Text>
-                <Text className="text-sm text-gray-500">{profile?.email}</Text>
-              </View>
-              <TouchableOpacity
-                className="bg-lima-50 p-2 rounded-full"
-                onPress={() => {
-                  /* Add edit profile handler */
-                }}
-              >
+            <Text className="text-base font-semibold text-gray-900 mb-4">
+              Account Settings
+            </Text>
+            <View className="gap-3">
+              <TouchableOpacity className="flex-row items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                <View className="flex-row items-center gap-3">
+                  <MaterialCommunityIcons
+                    name="account-edit"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text className="text-gray-700">Edit Profile</Text>
+                </View>
                 <MaterialCommunityIcons
-                  name="pencil"
+                  name="chevron-right"
                   size={20}
-                  color="#65a30d"
+                  color="#4b5563"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity className="flex-row items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                <View className="flex-row items-center gap-3">
+                  <MaterialCommunityIcons
+                    name="lock"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text className="text-gray-700">Change Password</Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={20}
+                  color="#4b5563"
                 />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Quick Actions */}
-          <Text className="text-base font-semibold text-gray-900 mb-4">
-            Quick Actions
-          </Text>
-          <View className="gap-3">
-            <TouchableOpacity className="flex-row items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <View className="flex-row items-center gap-3">
-                <MaterialCommunityIcons name="cog" size={20} color="#374151" />
-                <Text className="text-gray-700">Settings</Text>
-              </View>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color="#374151"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity className="flex-row items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <View className="flex-row items-center gap-3">
+          {/* Preferences */}
+          <View className="mb-8">
+            <Text className="text-base font-semibold text-gray-900 mb-4">
+              Preferences
+            </Text>
+            <View className="gap-3">
+              <TouchableOpacity className="flex-row items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                <View className="flex-row items-center gap-3">
+                  <MaterialCommunityIcons
+                    name="bell"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text className="text-gray-700">Notifications</Text>
+                </View>
                 <MaterialCommunityIcons
-                  name="help-circle"
+                  name="chevron-right"
                   size={20}
-                  color="#374151"
+                  color="#4b5563"
                 />
-                <Text className="text-gray-700">Help & Support</Text>
-              </View>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color="#374151"
-              />
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            <TouchableOpacity className="flex-row items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <View className="flex-row items-center gap-3">
+              <TouchableOpacity className="flex-row items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                <View className="flex-row items-center gap-3">
+                  <MaterialCommunityIcons
+                    name="translate"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text className="text-gray-700">Language</Text>
+                </View>
                 <MaterialCommunityIcons
-                  name="shield-check"
+                  name="chevron-right"
                   size={20}
-                  color="#374151"
+                  color="#4b5563"
                 />
-                <Text className="text-gray-700">Privacy Policy</Text>
-              </View>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color="#374151"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleSignOut}
-              className="flex-row items-center justify-between p-4 bg-red-50 rounded-xl mt-4"
-            >
-              <View className="flex-row items-center gap-3">
-                <MaterialCommunityIcons
-                  name="logout"
-                  size={20}
-                  color="#dc2626"
-                />
-                <Text className="text-red-600">Sign Out</Text>
-              </View>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color="#dc2626"
-              />
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {/* Support */}
+          <View className="mb-8">
+            <Text className="text-base font-semibold text-gray-900 mb-4">
+              Support
+            </Text>
+            <View className="gap-3">
+              <TouchableOpacity className="flex-row items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                <View className="flex-row items-center gap-3">
+                  <MaterialCommunityIcons
+                    name="help-circle"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text className="text-gray-700">Help Center</Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={20}
+                  color="#4b5563"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity className="flex-row items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                <View className="flex-row items-center gap-3">
+                  <MaterialCommunityIcons
+                    name="shield-check"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text className="text-gray-700">Privacy Policy</Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={20}
+                  color="#4b5563"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Sign Out Button */}
+          <TouchableOpacity
+            onPress={handleSignOut}
+            className="mb-8 flex-row items-center justify-center p-4 bg-red-50 rounded-xl border border-red-100"
+          >
+            <MaterialCommunityIcons
+              name="logout"
+              size={20}
+              color="#dc2626"
+              style={{ marginRight: 8 }}
+            />
+            <Text className="text-red-600 font-medium">Sign Out</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

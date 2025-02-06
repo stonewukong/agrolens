@@ -22,6 +22,7 @@ type AuthScreenProps = {
 export default function AuthScreen({ isSignUp }: AuthScreenProps) {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [fullName, setFullName] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
@@ -48,7 +49,7 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
   }, []);
 
   const handleAuth = async () => {
-    if (!email || !password) {
+    if (!email || !password || (isSignUp && !fullName)) {
       alert('Please fill in all fields');
       return;
     }
@@ -64,6 +65,7 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
             options: {
               data: {
                 email: email,
+                full_name: fullName,
               },
               emailRedirectTo: undefined, // Remove email redirect
             },
@@ -80,6 +82,7 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
               {
                 id: authData.user.id,
                 email: email,
+                full_name: fullName,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               },
@@ -180,6 +183,24 @@ export default function AuthScreen({ isSignUp }: AuthScreenProps) {
 
             {/* Form Section */}
             <View className="gap-4">
+              {isSignUp && (
+                <View className="gap-2">
+                  <Text className="text-[13px] font-medium text-lima-700 ml-0.5">
+                    Full Name
+                  </Text>
+                  <View className="bg-lima-50 rounded-xl border border-lima-100 shadow-sm">
+                    <TextInput
+                      className="w-full px-4 py-3.5 bg-transparent text-lima-900"
+                      placeholder="Enter your full name"
+                      value={fullName}
+                      onChangeText={setFullName}
+                      autoCapitalize="words"
+                      placeholderTextColor="#476a21"
+                    />
+                  </View>
+                </View>
+              )}
+
               {/* Email Input */}
               <View className="gap-2">
                 <Text className="text-[13px] font-medium text-lima-700 ml-0.5">

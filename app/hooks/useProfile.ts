@@ -5,6 +5,7 @@ import { Session, User } from '@supabase/supabase-js';
 interface Profile {
   id: string;
   email: string;
+  full_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -30,8 +31,8 @@ export default function useProfile(): ProfileData {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
-
-        console.log('Session:', session); // Debug log
+        // important
+        // console.log('Session:', session);
 
         if (sessionError) {
           console.error('Session error:', sessionError);
@@ -46,7 +47,8 @@ export default function useProfile(): ProfileData {
 
         // Set authenticated user
         setUser(session.user);
-        console.log('Authenticated user:', session.user); // Debug log
+        // important
+        // console.log('Authenticated user:', session.user);
 
         // Fetch profile data
         const { data, error: profileError } = await supabase
@@ -55,7 +57,8 @@ export default function useProfile(): ProfileData {
           .eq('id', session.user.id)
           .single();
 
-        console.log('Profile data:', data); // Debug log
+        // important
+        // console.log('Profile data:', data);
 
         if (profileError) {
           console.error('Profile error:', profileError);
@@ -77,7 +80,8 @@ export default function useProfile(): ProfileData {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session?.user); // Debug log
+      // important
+      // console.log('Auth state changed:', event, session?.user);
       if (session?.user) {
         setUser(session.user);
         fetchProfile();
