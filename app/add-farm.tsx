@@ -11,10 +11,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, Stack } from 'expo-router';
 import { useFarmStore } from '@/app/stores/useFarmStore';
+import { useTranslation } from 'react-i18next';
 
 export default function AddFarmScreen() {
   const router = useRouter();
   const { addFarm } = useFarmStore();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
     type: 'Wheat' as 'Wheat' | 'Rice' | 'Corn' | 'Other',
@@ -95,7 +97,7 @@ export default function AddFarmScreen() {
               />
             </TouchableOpacity>
             <Text className="text-xl font-bold text-gray-900">
-              Add New Farm
+              {t('farms.addFarm')}
             </Text>
           </View>
         </View>
@@ -105,11 +107,11 @@ export default function AddFarmScreen() {
           {/* Farm Name */}
           <View className="mb-6">
             <Text className="text-sm font-medium text-gray-700 mb-2">
-              Farm Name
+              {t('farms.farmName')}
             </Text>
             <TextInput
               className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900"
-              placeholder="Enter farm name"
+              placeholder={t('farms.farmName')}
               value={formData.name}
               onChangeText={(text) =>
                 setFormData((prev) => ({ ...prev, name: text }))
@@ -120,7 +122,7 @@ export default function AddFarmScreen() {
           {/* Farm Type */}
           <View className="mb-6">
             <Text className="text-sm font-medium text-gray-700 mb-2">
-              Farm Type
+              {t('farms.farmType')}
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {['Wheat', 'Rice', 'Corn', 'Other'].map((type) => (
@@ -153,11 +155,11 @@ export default function AddFarmScreen() {
           {/* Area */}
           <View className="mb-6">
             <Text className="text-sm font-medium text-gray-700 mb-2">
-              Area (acres)
+              {t('farms.area')} ({t('farms.acres')})
             </Text>
             <TextInput
               className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900"
-              placeholder="Enter area in acres"
+              placeholder={t('farms.area')}
               keyboardType="numeric"
               value={formData.area}
               onChangeText={(text) =>
@@ -169,7 +171,7 @@ export default function AddFarmScreen() {
           {/* Location */}
           <View className="mb-6">
             <Text className="text-sm font-medium text-gray-700 mb-2">
-              Location
+              {t('farms.location')}
             </Text>
             <View className="gap-3">
               <TextInput
@@ -198,7 +200,7 @@ export default function AddFarmScreen() {
               />
               <TextInput
                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900"
-                placeholder="Address"
+                placeholder={t('farms.location')}
                 value={formData.location.address}
                 onChangeText={(text) =>
                   setFormData((prev) => ({
@@ -215,7 +217,9 @@ export default function AddFarmScreen() {
             onPress={handleSubmit}
             className="bg-lima-600 py-4 rounded-xl"
           >
-            <Text className="text-white text-center font-medium">Add Farm</Text>
+            <Text className="text-white text-center font-medium">
+              {t('farms.addFarm')}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

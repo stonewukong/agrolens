@@ -14,13 +14,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getDisplayInitial, getDisplayName } from '@/app/utils/nameUtils';
 import { StatusBar } from 'expo-status-bar';
 import LanguageSelector from '@/app/components/LanguageSelector';
-import { useLanguageStore } from '@/app/stores/useLanguageStore';
+import { useTranslation } from 'react-i18next';
 
 export default function ProfileScreen() {
   const { profile, loading } = useProfile();
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
-  const { translations } = useLanguageStore();
+  const { t } = useTranslation();
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -40,7 +40,7 @@ export default function ProfileScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 0 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
       >
         {/* Profile Header */}
         <View className="pb-4">
@@ -55,7 +55,7 @@ export default function ProfileScreen() {
           />
           <View className="px-6 pt-4">
             <Text className="text-2xl font-bold text-gray-900">
-              {translations.profile.profile}
+              {t('profile.profile')}
             </Text>
             <View className="items-center mt-6">
               <View className="size-24 rounded-full bg-lima-100 items-center justify-center mb-4">
@@ -70,7 +70,7 @@ export default function ProfileScreen() {
                 {profile?.email}
               </Text>
               <Text className="text-xs text-lima-600 mt-2">
-                Member since{' '}
+                {t('profile.memberSince')}{' '}
                 {new Date(profile?.created_at || '').toLocaleDateString(
                   'en-US',
                   {
@@ -88,7 +88,7 @@ export default function ProfileScreen() {
           {/* Account Settings */}
           <View className="mb-6">
             <Text className="text-base font-semibold text-gray-900 mb-2">
-              {translations.profile.accountSettings}
+              {t('profile.accountSettings')}
             </Text>
             <View className="gap-2">
               <TouchableOpacity className="flex-row items-center justify-between p-3 bg-white rounded-xl border border-lima-200">
@@ -101,7 +101,7 @@ export default function ProfileScreen() {
                     />
                   </View>
                   <Text className="text-gray-900 font-medium text-sm">
-                    {translations.profile.editProfile}
+                    {t('profile.editProfile')}
                   </Text>
                 </View>
                 <MaterialCommunityIcons
@@ -121,7 +121,7 @@ export default function ProfileScreen() {
                     />
                   </View>
                   <Text className="text-gray-900 font-medium text-sm">
-                    {translations.profile.changePassword}
+                    {t('profile.changePassword')}
                   </Text>
                 </View>
                 <MaterialCommunityIcons
@@ -136,7 +136,7 @@ export default function ProfileScreen() {
           {/* Preferences */}
           <View className="mb-6">
             <Text className="text-base font-semibold text-gray-900 mb-2">
-              {translations.profile.preferences}
+              {t('profile.preferences')}
             </Text>
             <View className="gap-2">
               <TouchableOpacity className="flex-row items-center justify-between p-3 bg-white rounded-xl border border-lima-200">
@@ -149,7 +149,7 @@ export default function ProfileScreen() {
                     />
                   </View>
                   <Text className="text-gray-900 font-medium text-sm">
-                    Notifications
+                    {t('profile.notifications')}
                   </Text>
                 </View>
                 <MaterialCommunityIcons
@@ -161,7 +161,7 @@ export default function ProfileScreen() {
 
               <View className="mb-6">
                 <Text className="text-base font-semibold text-gray-900 mb-2">
-                  {translations.profile.language}
+                  {t('profile.language')}
                 </Text>
                 <LanguageSelector />
               </View>
@@ -179,7 +179,9 @@ export default function ProfileScreen() {
               color="#dc2626"
               style={{ marginRight: 8 }}
             />
-            <Text className="text-red-600 font-medium text-sm">Sign Out</Text>
+            <Text className="text-red-600 font-medium text-sm">
+              {t('profile.signOut')}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

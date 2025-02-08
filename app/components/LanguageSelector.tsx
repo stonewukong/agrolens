@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { useLanguageStore } from '@/app/stores/useLanguageStore';
+import { useTranslation } from 'react-i18next';
 
 export default function LanguageSelector() {
-  const { language, setLanguage } = useLanguageStore();
+  const { i18n } = useTranslation();
 
   const languages = [
     { code: 'en', name: 'English' },
@@ -16,19 +16,21 @@ export default function LanguageSelector() {
       {languages.map((lang) => (
         <TouchableOpacity
           key={lang.code}
-          onPress={() => setLanguage(lang.code as 'en' | 'hi' | 'te')}
+          onPress={() => i18n.changeLanguage(lang.code)}
           className={`p-3 flex-row items-center justify-between ${
-            language === lang.code ? 'bg-lima-100' : 'border-b border-lima-200'
+            i18n.language === lang.code
+              ? 'bg-lima-100'
+              : 'border-b border-lima-200'
           }`}
         >
           <Text
             className={`${
-              language === lang.code ? 'text-lima-800' : 'text-gray-600'
+              i18n.language === lang.code ? 'text-lima-800' : 'text-gray-600'
             } font-medium`}
           >
             {lang.name}
           </Text>
-          {language === lang.code && (
+          {i18n.language === lang.code && (
             <View className="size-2 rounded-full bg-lima-800" />
           )}
         </TouchableOpacity>

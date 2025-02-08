@@ -12,12 +12,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useFarmStore } from '@/app/stores/useFarmStore';
 import Skeleton from '@/app/components/Skeleton';
+import { useTranslation } from 'react-i18next';
 
 export default function FarmsScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
   const router = useRouter();
   const { farms } = useFarmStore();
   const [loading, setLoading] = React.useState(false);
+  const { t } = useTranslation();
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -89,10 +91,10 @@ export default function FarmsScreen() {
             <View className="flex-row justify-between items-center">
               <View>
                 <Text className="text-2xl font-bold text-gray-900">
-                  My Farms
+                  {t('farms.myFarms')}
                 </Text>
                 <Text className="text-sm text-lima-600 mt-1">
-                  Managing {farms.length} active farms
+                  {t('farms.managing', { count: farms.length })}
                 </Text>
               </View>
               <TouchableOpacity
@@ -139,7 +141,8 @@ export default function FarmsScreen() {
                           {farm.name}
                         </Text>
                         <Text className="text-lima-600 text-sm">
-                          {farm.area} acres • {farm.growthStage.days} days old
+                          {farm.area} {t('farms.acres')} •{' '}
+                          {farm.growthStage.days} {t('home.days')}
                         </Text>
                       </View>
                       <View
@@ -160,7 +163,11 @@ export default function FarmsScreen() {
                               : 'text-red-700'
                           }`}
                         >
-                          {farm.status}
+                          {t(
+                            `farms.status.${farm.status
+                              .toLowerCase()
+                              .replace(' ', '')}`
+                          )}
                         </Text>
                       </View>
                     </View>
@@ -176,7 +183,9 @@ export default function FarmsScreen() {
                           />
                         </View>
                         <View>
-                          <Text className="text-xs text-lima-600">NDVI</Text>
+                          <Text className="text-xs text-lima-600">
+                            {t('farms.metrics.ndviScore')}
+                          </Text>
                           <Text className="text-base font-semibold text-lima-700">
                             {farm.metrics.ndviScore}
                           </Text>
@@ -191,7 +200,9 @@ export default function FarmsScreen() {
                           />
                         </View>
                         <View>
-                          <Text className="text-xs text-blue-600">Water</Text>
+                          <Text className="text-xs text-blue-600">
+                            {t('farms.metrics.waterStress')}
+                          </Text>
                           <Text className="text-base font-semibold text-blue-700">
                             {farm.metrics.waterStress.level}
                           </Text>
@@ -206,7 +217,9 @@ export default function FarmsScreen() {
                           />
                         </View>
                         <View>
-                          <Text className="text-xs text-yellow-600">Risk</Text>
+                          <Text className="text-xs text-yellow-600">
+                            {t('farms.metrics.diseaseRisk')}
+                          </Text>
                           <Text className="text-base font-semibold text-yellow-700">
                             {farm.metrics.diseaseRisk.percentage}%
                           </Text>
@@ -223,7 +236,7 @@ export default function FarmsScreen() {
                           color="#4d7c0f"
                         />
                         <Text className="text-lima-700 font-medium text-sm ml-1">
-                          Analytics
+                          {t('farms.actions.analytics')}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity className="flex-1 bg-lima-50 py-2 rounded-lg flex-row justify-center items-center">
@@ -233,7 +246,7 @@ export default function FarmsScreen() {
                           color="#4d7c0f"
                         />
                         <Text className="text-lima-700 font-medium text-sm ml-1">
-                          Manage
+                          {t('farms.actions.manage')}
                         </Text>
                       </TouchableOpacity>
                     </View>

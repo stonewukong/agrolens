@@ -1,5 +1,11 @@
-import React, { useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import useProfile from '@/app/hooks/useProfile';
@@ -14,7 +20,7 @@ import {
   getVisibilityDescription,
 } from '@/app/utils/weatherUtils';
 import Skeleton from '@/app/components/Skeleton';
-import { useLanguageStore } from '@/app/stores/useLanguageStore';
+import { useTranslation } from 'react-i18next';
 
 export default function HomeScreen() {
   const { profile, loading: profileLoading } = useProfile();
@@ -32,7 +38,15 @@ export default function HomeScreen() {
     error: weatherError,
     fetchWeather,
   } = useWeatherStore();
-  const { translations } = useLanguageStore();
+  const { t } = useTranslation();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    Promise.all([initializeFarms(), fetchWeather()]).finally(() => {
+      setRefreshing(false);
+    });
+  }, []);
 
   useEffect(() => {
     initializeFarms();
@@ -116,6 +130,40 @@ export default function HomeScreen() {
     </View>
   );
 
+  const formatDate = (date: Date) => {
+    const days = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
+    const months = [
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'may',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
+    ];
+
+    const dayKey = days[date.getDay()];
+    const monthKey = months[date.getMonth()];
+    const dayNum = date.getDate();
+
+    return `${t('date.days.' + dayKey)}, ${t(
+      'date.short.' + monthKey
+    )} ${dayNum}`;
+  };
+
   if (profileLoading || farmsLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white">
@@ -167,6 +215,14 @@ export default function HomeScreen() {
         contentContainerStyle={{
           paddingBottom: 10, // Add extra padding at bottom
         }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#65a30d']} // lima-600 color
+            tintColor="#65a30d"
+          />
+        }
       >
         {/* Welcome Section */}
         <View className="pb-4">
@@ -191,13 +247,13 @@ export default function HomeScreen() {
                       hour: 'numeric',
                       hour12: true,
                     }) < '12:00'
-                      ? 'Good morning'
+                      ? t('common.goodMorning')
                       : new Date().toLocaleString('en-US', {
                           hour: 'numeric',
                           hour12: true,
                         }) < '17:00'
-                      ? 'Good afternoon'
-                      : 'Good evening'}
+                      ? t('common.goodAfternoon')
+                      : t('common.goodEvening')}
                     ,
                   </Text>
                   <Text className="text-sm text-lima-700 ml-1">👋</Text>
@@ -206,11 +262,7 @@ export default function HomeScreen() {
                   {getDisplayName(profile?.full_name)}
                 </Text>
                 <Text className="text-sm text-lima-600 mt-1">
-                  {new Date().toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {formatDate(new Date())}
                 </Text>
               </View>
 
@@ -236,8 +288,38 @@ export default function HomeScreen() {
             <WeatherSkeleton />
           ) : weatherError ? (
             <View className="bg-white rounded-2xl p-4 shadow-md border border-lima-200 mb-6">
-              <View className="items-center py-4">
-                <Text className="text-red-500">{weatherError}</Text>
+              <View className="flex-row items-start justify-between">
+                <View>
+                  <View className="flex-row items-center gap-2 mb-3">
+                    <MaterialCommunityIcons
+                      name="map-marker-alert"
+                      size={20}
+                      color="#ef4444"
+                    />
+                    <Text className="text-red-500 font-medium">
+                      {t('weather.error.locationUnavailable')}
+                    </Text>
+                  </View>
+                  <Text className="text-gray-500 text-sm">
+                    {t('weather.error.enableLocation')}
+                  </Text>
+                </View>
+                <View className="bg-red-50 p-2.5 rounded-xl">
+                  <MaterialCommunityIcons
+                    name="map-marker-off"
+                    size={24}
+                    color="#ef4444"
+                  />
+                </View>
+              </View>
+              <View className="mt-4 pt-4 border-t border-gray-100">
+                <View className="mb-3">
+                  <Skeleton width="100%" height={48} borderRadius={12} />
+                </View>
+                <View className="mb-3">
+                  <Skeleton width="100%" height={48} borderRadius={12} />
+                </View>
+                <Skeleton width="100%" height={48} borderRadius={12} />
               </View>
             </View>
           ) : weather ? (
@@ -311,7 +393,7 @@ export default function HomeScreen() {
                           <View className="flex-row items-center justify-between">
                             <View>
                               <Text className="text-gray-500 text-xs">
-                                {translations.weather.windSpeed}
+                                {t('weather.windSpeed')}
                               </Text>
                               <Text className="text-gray-900 font-medium">
                                 {weather.current.wind_speed} km/h
@@ -342,7 +424,7 @@ export default function HomeScreen() {
                           <View className="flex-row items-center justify-between">
                             <View>
                               <Text className="text-gray-500 text-xs">
-                                {translations.weather.humidity}
+                                {t('weather.humidity')}
                               </Text>
                               <Text className="text-gray-900 font-medium">
                                 {weather.current.humidity}%
@@ -358,10 +440,10 @@ export default function HomeScreen() {
                               }`}
                             >
                               {weather.current.humidity > 70
-                                ? translations.weather.high
+                                ? t('weather.high')
                                 : weather.current.humidity < 30
-                                ? translations.weather.low
-                                : translations.weather.normal}
+                                ? t('weather.low')
+                                : t('weather.normal')}
                             </Text>
                           </View>
                         </View>
@@ -383,7 +465,7 @@ export default function HomeScreen() {
                           <View className="flex-row items-center justify-between">
                             <View>
                               <Text className="text-gray-500 text-xs">
-                                {translations.weather.visibility}
+                                {t('weather.visibility')}
                               </Text>
                               <Text className="text-gray-900 font-medium">
                                 {(weather.current.visibility / 1000).toFixed(1)}{' '}
@@ -417,15 +499,20 @@ export default function HomeScreen() {
           <View className="mb-6">
             <View className="flex-row justify-between items-center mb-3">
               <Text className="text-lg font-semibold text-gray-900">
-                {translations.home.activeFarms}
+                {t('home.activeFarms')}
               </Text>
               <TouchableOpacity
                 onPress={() => router.push('/(tabs)/farms')}
-                className="bg-lima-200 px-3 py-1 rounded-full"
+                className="bg-lima-200 px-3 py-1 rounded-full flex-row items-center"
               >
-                <Text className="text-lima-800 text-sm font-medium">
-                  View All
+                <Text className="text-lima-800 text-sm font-medium mr-1">
+                  {t('common.viewAll')}
                 </Text>
+                <MaterialCommunityIcons
+                  name="arrow-right"
+                  size={16}
+                  color="#3f6212"
+                />
               </TouchableOpacity>
             </View>
 
@@ -468,7 +555,7 @@ export default function HomeScreen() {
                               : 'text-lima-700'
                           }
                         >
-                          {farm.area} acres
+                          {farm.area} {t('farms.acres')}
                         </Text>
                       </View>
                       <MaterialCommunityIcons
@@ -514,7 +601,7 @@ export default function HomeScreen() {
         {/* Quick Stats - Updated Design */}
         <View className="px-6 mb-6">
           <Text className="text-lg font-semibold text-gray-900 mb-2">
-            {translations.home.quickActions}
+            {t('home.quickActions')}
           </Text>
           <View className="gap-2">
             {/* Analyze Crops */}
@@ -529,10 +616,10 @@ export default function HomeScreen() {
                 </View>
                 <View className="flex-1 ml-3">
                   <Text className="text-gray-900 font-medium text-sm">
-                    {translations.home.analyzeCrops}
+                    {t('home.analyzeCrops')}
                   </Text>
                   <Text className="text-lima-600 text-xs">
-                    {translations.home.analyzeCropsDesc}
+                    {t('home.analyzeCropsDesc')}
                   </Text>
                 </View>
                 <MaterialCommunityIcons
@@ -555,10 +642,10 @@ export default function HomeScreen() {
                 </View>
                 <View className="flex-1 ml-3">
                   <Text className="text-gray-900 font-medium text-sm">
-                    {translations.home.irrigationStatus}
+                    {t('home.irrigationStatus')}
                   </Text>
                   <Text className="text-lima-600 text-xs">
-                    {translations.home.irrigationStatusDesc}
+                    {t('home.irrigationStatusDesc')}
                   </Text>
                 </View>
                 <MaterialCommunityIcons
@@ -581,10 +668,10 @@ export default function HomeScreen() {
                 </View>
                 <View className="flex-1 ml-3">
                   <Text className="text-gray-900 font-medium text-sm">
-                    {translations.home.diseaseDetection}
+                    {t('home.diseaseDetection')}
                   </Text>
                   <Text className="text-lima-600 text-xs">
-                    {translations.home.diseaseDetectionDesc}
+                    {t('home.diseaseDetectionDesc')}
                   </Text>
                 </View>
                 <MaterialCommunityIcons

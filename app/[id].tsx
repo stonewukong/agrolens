@@ -11,6 +11,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useFarmStore } from '@/app/stores/useFarmStore';
+import { useTranslation } from 'react-i18next';
 
 export default function FarmDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -18,6 +19,7 @@ export default function FarmDetailsScreen() {
   const { getFarmById } = useFarmStore();
   const farm = getFarmById(id as string);
   const [refreshing, setRefreshing] = React.useState(false);
+  const { t } = useTranslation();
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -27,7 +29,7 @@ export default function FarmDetailsScreen() {
   if (!farm) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <Text className="text-gray-500">Farm not found</Text>
+        <Text className="text-gray-500">{t('farms.notFound')}</Text>
       </View>
     );
   }
@@ -65,7 +67,12 @@ export default function FarmDetailsScreen() {
                     {farm.name}
                   </Text>
                   <Text className="text-sm text-lima-600 mt-1">
-                    {farm.area} acres • {farm.growthStage.stage}
+                    {farm.area} {t('farms.acres')} •{' '}
+                    {t('farms.growthTimeline.currentStage', {
+                      stage: t(
+                        `farms.stages.${farm.growthStage.stage.toLowerCase()}`
+                      ),
+                    })}
                   </Text>
                 </View>
                 <View
@@ -86,7 +93,11 @@ export default function FarmDetailsScreen() {
                         : 'text-red-700'
                     }`}
                   >
-                    {farm.status}
+                    {t(
+                      `farms.status.${farm.status
+                        .toLowerCase()
+                        .replace(' ', '')}`
+                    )}
                   </Text>
                 </View>
               </View>
@@ -98,14 +109,14 @@ export default function FarmDetailsScreen() {
             {/* Key Metrics */}
             <View className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 mb-4">
               <Text className="text-base font-semibold text-gray-900 mb-3">
-                Key Metrics
+                {t('farms.metrics.title')}
               </Text>
               <View className="flex-row flex-wrap gap-3">
                 {/* NDVI Score */}
                 <View className="flex-1 min-w-[45%] bg-lima-50 p-3 rounded-xl">
                   <View className="flex-row justify-between items-start mb-2">
                     <Text className="text-lima-700 font-medium">
-                      NDVI Score
+                      {t('farms.metrics.ndviScore')}
                     </Text>
                     <MaterialCommunityIcons
                       name="leaf"
@@ -118,10 +129,10 @@ export default function FarmDetailsScreen() {
                   </Text>
                   <Text className="text-lima-600 text-xs mt-1">
                     {farm.metrics.ndviScore > 0.8
-                      ? 'Excellent Health'
+                      ? t('farms.metrics.excellentHealth')
                       : farm.metrics.ndviScore > 0.6
-                      ? 'Good Health'
-                      : 'Needs Attention'}
+                      ? t('farms.metrics.goodHealth')
+                      : t('farms.metrics.needsAttention')}
                   </Text>
                 </View>
 
@@ -129,7 +140,7 @@ export default function FarmDetailsScreen() {
                 <View className="flex-1 min-w-[45%] bg-blue-50 p-3 rounded-xl">
                   <View className="flex-row justify-between items-start mb-2">
                     <Text className="text-blue-700 font-medium">
-                      Water Stress
+                      {t('farms.metrics.waterStress')}
                     </Text>
                     <MaterialCommunityIcons
                       name={
@@ -142,10 +153,13 @@ export default function FarmDetailsScreen() {
                     />
                   </View>
                   <Text className="text-2xl font-bold text-blue-700">
-                    {farm.metrics.waterStress.level}
+                    {t(
+                      `weather.${farm.metrics.waterStress.level.toLowerCase()}`
+                    )}
                   </Text>
                   <Text className="text-blue-600 text-xs mt-1">
-                    {farm.metrics.waterStress.value.toFixed(2)} index
+                    {farm.metrics.waterStress.value.toFixed(2)}{' '}
+                    {t('farms.metrics.index')}
                   </Text>
                 </View>
 
@@ -153,7 +167,7 @@ export default function FarmDetailsScreen() {
                 <View className="flex-1 min-w-[45%] bg-purple-50 p-3 rounded-xl">
                   <View className="flex-row justify-between items-start mb-2">
                     <Text className="text-purple-700 font-medium">
-                      Nitrogen
+                      {t('farms.metrics.nitrogen')}
                     </Text>
                     <MaterialCommunityIcons
                       name="molecule"
@@ -165,7 +179,10 @@ export default function FarmDetailsScreen() {
                     {farm.metrics.nitrogen.value}
                   </Text>
                   <Text className="text-purple-600 text-xs mt-1">
-                    kg/ha • {farm.metrics.nitrogen.status}
+                    {t('farms.metrics.kgPerHa')} •{' '}
+                    {t(
+                      `farms.metrics.${farm.metrics.nitrogen.status.toLowerCase()}`
+                    )}
                   </Text>
                 </View>
 
@@ -173,7 +190,7 @@ export default function FarmDetailsScreen() {
                 <View className="flex-1 min-w-[45%] bg-yellow-50 p-3 rounded-xl">
                   <View className="flex-row justify-between items-start mb-2">
                     <Text className="text-yellow-700 font-medium">
-                      Disease Risk
+                      {t('farms.metrics.diseaseRisk')}
                     </Text>
                     <MaterialCommunityIcons
                       name={
@@ -189,7 +206,10 @@ export default function FarmDetailsScreen() {
                     {farm.metrics.diseaseRisk.percentage}%
                   </Text>
                   <Text className="text-yellow-600 text-xs mt-1">
-                    {farm.metrics.diseaseRisk.status} risk level
+                    {t(
+                      `weather.${farm.metrics.diseaseRisk.status.toLowerCase()}`
+                    )}{' '}
+                    {t('farms.metrics.riskLevel')}
                   </Text>
                 </View>
               </View>
@@ -198,7 +218,7 @@ export default function FarmDetailsScreen() {
             {/* Growth Timeline */}
             <View className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 mb-4">
               <Text className="text-base font-semibold text-gray-900 mb-3">
-                Growth Timeline
+                {t('farms.growthTimeline.title')}
               </Text>
               <View className="flex-row items-center mb-2">
                 <View className="h-1 flex-1 bg-lima-100 rounded-full overflow-hidden">
@@ -210,18 +230,24 @@ export default function FarmDetailsScreen() {
                   />
                 </View>
                 <Text className="ml-3 text-lima-700 font-medium">
-                  {farm.growthStage.days} days
+                  {t('farms.growthTimeline.daysOld', {
+                    days: farm.growthStage.days,
+                  })}
                 </Text>
               </View>
               <Text className="text-sm text-lima-600">
-                Current stage: {farm.growthStage.stage}
+                {t('farms.growthTimeline.currentStage', {
+                  stage: t(
+                    `farms.stages.${farm.growthStage.stage.toLowerCase()}`
+                  ),
+                })}
               </Text>
             </View>
 
             {/* Next Actions */}
             <View className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 mb-4">
               <Text className="text-base font-semibold text-gray-900 mb-3">
-                Next Actions
+                {t('farms.actions.nextActions')}
               </Text>
               <View className="gap-3">
                 {farm.nextIrrigation && (
@@ -233,7 +259,7 @@ export default function FarmDetailsScreen() {
                     />
                     <View className="flex-1 ml-3">
                       <Text className="text-blue-900 font-medium">
-                        Scheduled Irrigation
+                        {t('farms.actions.scheduledIrrigation')}
                       </Text>
                       <Text className="text-blue-600 text-sm">
                         {new Date(farm.nextIrrigation).toLocaleDateString(
@@ -264,10 +290,10 @@ export default function FarmDetailsScreen() {
                   />
                   <View className="flex-1 ml-3">
                     <Text className="text-lima-900 font-medium">
-                      Scan Crop Health
+                      {t('farms.actions.scanCropHealth')}
                     </Text>
                     <Text className="text-lima-600 text-sm">
-                      Last scan: 2 days ago
+                      {t('farms.actions.lastScan', { time: '2 days ago' })}
                     </Text>
                   </View>
                   <MaterialCommunityIcons
@@ -285,10 +311,10 @@ export default function FarmDetailsScreen() {
                   />
                   <View className="flex-1 ml-3">
                     <Text className="text-purple-900 font-medium">
-                      Soil Analysis Due
+                      {t('farms.actions.soilAnalysis')}
                     </Text>
                     <Text className="text-purple-600 text-sm">
-                      Schedule next test
+                      {t('farms.actions.scheduleTest')}
                     </Text>
                   </View>
                   <MaterialCommunityIcons

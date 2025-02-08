@@ -2,9 +2,11 @@ import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -43,7 +45,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => (
             <View
               className={`p-1 rounded-2xl ${
@@ -62,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="farms"
         options={{
-          title: 'My Farms',
+          title: t('tabs.farms'),
           tabBarIcon: ({ color, focused }) => (
             <View
               className={`p-1 rounded-2xl ${
@@ -81,7 +83,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Alerts',
+          title: t('tabs.alerts'),
           tabBarIcon: ({ color, focused }) => (
             <View className="relative">
               <View
@@ -103,7 +105,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, focused }) => (
             <View
               className={`p-1 rounded-2xl ${

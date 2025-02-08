@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { supabase } from '@/utils/SupaLegend';
 import './global.css';
+import '@/app/i18n';
 
 export default function RootLayout() {
   const segments = useSegments();
@@ -47,7 +48,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <Stack>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="(auth)"
         options={{

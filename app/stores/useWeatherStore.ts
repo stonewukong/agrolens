@@ -15,6 +15,7 @@ interface WeatherData {
     visibility: number;
   };
   location: string;
+  lastUpdated: number; // timestamp of last update
 }
 
 interface WeatherState {
@@ -24,17 +25,24 @@ interface WeatherState {
   fetchWeather: () => Promise<void>;
 }
 
-export const useWeatherStore = create<WeatherState>((set) => ({
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+export const useWeatherStore = create<WeatherState>((set, get) => ({
   data: null,
   loading: false,
   error: null,
 
   fetchWeather: async () => {
+    const currentData = get().data;
+    const now = Date.now();
+
+    // If we have data and it's less than 30 minutes old, don't fetch
+    if (currentData && now - currentData.lastUpdated < CACHE_DURATION) {
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
-      // Add artificial delay
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
-
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
@@ -53,8 +61,6 @@ export const useWeatherStore = create<WeatherState>((set) => ({
 
       const weatherData = await response.json();
 
-      console.log(weatherData);
-
       // Get location name
       const [placemark] = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
@@ -72,6 +78,7 @@ export const useWeatherStore = create<WeatherState>((set) => ({
             visibility: weatherData.visibility,
           },
           location: weatherData.name || placemark?.city || 'Unknown Location',
+          lastUpdated: now,
         },
         loading: false,
       });
