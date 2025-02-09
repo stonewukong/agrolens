@@ -1,43 +1,41 @@
 {
   "expo": {
-    "name": "agrolens",
+    "name": "AgroLens",
     "slug": "agrolens",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "your-app-scheme",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "light",
+    "scheme": "agrolens",
+    "splash": {
+      "image": "./assets/images/agrolens-light.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agrolens.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/agrolens-light.png",
+        "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.agrolens.app",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
     "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/logo-rounded.png"
     },
     "plugins": [
-      "expo-router",
       [
-        "expo-splash-screen",
+        "expo-location",
         {
-          "image": "./assets/images/agrolens-dark.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "locationAlwaysAndWhenInUsePermission": "Allow AgroLens to use your location to find your farms and provide accurate weather data."
         }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    },
-    "assetBundlePatterns": [
-      "**/*"
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

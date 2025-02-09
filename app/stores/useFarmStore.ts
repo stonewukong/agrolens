@@ -62,6 +62,7 @@ interface Farm {
   plantingDate: Date;
   icon: 'grain' | 'sprout' | 'corn' | 'seed';
   notes: string[];
+  agroPolygonId?: string; // ID from AgroMonitoring API
 }
 
 interface FarmState {
