@@ -167,6 +167,12 @@ export default {
       trueDesc: 'Natural Color',
       falseDesc: 'Infrared View',
     },
+    insights: {
+      title: 'Farm Insights',
+      ndvi: 'Vegetation Health Index',
+      alerts: 'Weather Alerts',
+      error: 'Failed to gather farm insights. Please try again.',
+    },
   },
   crops: {
     rice: 'Rice',
@@ -233,10 +239,12 @@ export default {
   map: {
     startDrawing: 'Draw Farm Boundaries',
     drawInstructions:
-      'Tap on the map to add points. Add at least 3 points to create your farm boundaries. Tap "Done" when finished.',
+      'Tap on the map to add points ({{count}} more needed). Add at least 3 points to create your farm boundaries.',
     invalidPolygon:
       'Please add at least 3 points to create valid farm boundaries.',
     confirmBoundaries: 'Confirm Farm Boundaries',
     searchPlaceholder: 'Search for a location...',
+    processingPolygon: 'Processing farm boundaries...',
+    gatheringInsights: 'Gathering farm insights...',
   },
 } as const;

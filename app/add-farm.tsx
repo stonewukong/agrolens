@@ -7,9 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Dimensions,
   ActivityIndicator,
-  Platform,
   FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -27,12 +25,7 @@ import MapView, {
   MapPressEvent,
   PROVIDER_DEFAULT,
 } from 'react-native-maps';
-import {
-  CropType,
-  SoilType,
-  IrrigationMethod,
-  FarmLocation,
-} from '@/app/types/farm';
+import { CropType, SoilType, IrrigationMethod } from '@/app/types/farm';
 import { useFarmStore } from '@/app/stores/useFarmStore';
 import * as Location from 'expo-location';
 
@@ -44,17 +37,43 @@ interface SearchResult {
 
 type Step = 'draw' | 'form';
 
+interface MarkerType {
+  coordinate: {
+    latitude: number;
+    longitude: number;
+  };
+  id: string;
+}
+
 interface GeoJSONFeature {
   type: 'Feature';
   properties: {
     name: string;
     area: number;
+    agroPolygonId?: string;
   };
   geometry: {
     type: 'Polygon';
     coordinates: number[][][];
   };
 }
+
+const translations = {
+  insights: {
+    title: 'Farm Insights',
+    ndvi: 'Vegetation Health Index',
+    soilMoisture: 'Soil Moisture',
+    soilTemp: 'Soil Temperature',
+    temp: 'Current Temperature',
+    humidity: 'Humidity',
+    wind: 'Wind Speed',
+    uv: 'UV Index',
+    alerts: 'Weather Alerts',
+    error: 'Failed to gather farm insights. Please try again.',
+    processing: 'Processing polygon...',
+    gathering: 'Gathering insights...',
+  },
+};
 
 export default function AddFarmScreen() {
   const { t } = useTranslation();
@@ -82,12 +101,7 @@ export default function AddFarmScreen() {
 
   // Map drawing state
   const [isDrawing, setIsDrawing] = useState(false);
-  const [markers, setMarkers] = useState<
-    Array<{
-      coordinate: { latitude: number; longitude: number };
-      id: string;
-    }>
-  >([]);
+  const [markers, setMarkers] = useState<MarkerType[]>([]);
   const [farmLocation, setFarmLocation] = useState<GeoJSONFeature | null>(null);
 
   // Get coordinates for polygon/polyline
@@ -144,14 +158,118 @@ export default function AddFarmScreen() {
   };
 
   const handleMapPress = (e: MapPressEvent) => {
-    if (!isDrawing) return;
+    console.log('Map Pressed!');
+    console.log('isDrawing:', isDrawing);
+    console.log('Press coordinates:', e.nativeEvent.coordinate);
+    console.log('Current markers:', markers);
 
-    const newMarker = {
+    if (!isDrawing) {
+      console.log('Not in drawing mode, ignoring press');
+      return;
+    }
+
+    const newMarker: MarkerType = {
       coordinate: e.nativeEvent.coordinate,
       id: `marker-${Date.now()}-${Math.random()}`,
     };
 
-    setMarkers((prev) => [...prev, newMarker]);
+    console.log('Adding new marker:', newMarker);
+
+    setMarkers((prev) => {
+      const newMarkers = [...prev, newMarker];
+      console.log('Updated markers array:', newMarkers);
+
+      if (newMarkers.length === 4) {
+        console.log('Fourth point added, closing polygon');
+        const firstMarker: MarkerType = {
+          coordinate: prev[0].coordinate,
+          id: `marker-close-${Date.now()}`,
+        };
+        const closedMarkers = [...newMarkers, firstMarker];
+        console.log('Final closed markers:', closedMarkers);
+
+        const coordinates = closedMarkers.map((marker) => [
+          marker.coordinate.longitude,
+          marker.coordinate.latitude,
+        ]);
+        console.log('Polygon coordinates:', coordinates);
+
+        createPolygonAndGatherInsights(coordinates);
+        return closedMarkers;
+      }
+
+      return newMarkers;
+    });
+  };
+
+  // Function to create polygon and gather insights
+  const [isGatheringInsights, setIsGatheringInsights] = useState(false);
+
+  const createPolygonAndGatherInsights = async (coordinates: number[][]) => {
+    try {
+      setIsGatheringInsights(true);
+
+      // Create the polygon first
+      const polygon = await agroMonitoringService.createPolygon(
+        'Farm Polygon',
+        [coordinates]
+      );
+
+      // Gather insights in parallel
+      const [weatherData, soilData, ndviData] = await Promise.all([
+        agroMonitoringService.getWeatherData(polygon.id),
+        agroMonitoringService.getSoilData(polygon.id),
+        agroMonitoringService.getVegetationIndex(
+          polygon.id,
+          Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60, // Last 7 days
+          Math.floor(Date.now() / 1000)
+        ),
+      ]);
+
+      // Process the insights
+      const insights = {
+        ndvi: ndviData.length > 0 ? ndviData[ndviData.length - 1].value : null,
+        soilMoisture: soilData.moisture,
+        soilTemperature: soilData.t10,
+        temperature: Math.round(weatherData.main.temp),
+        humidity: weatherData.main.humidity,
+        windSpeed: Math.round(weatherData.wind.speed),
+        weatherCondition: weatherData.weather[0]?.main || 'Unknown',
+      };
+
+      // Show the insights to the user
+      Alert.alert(
+        t('farms.insights.title'),
+        `${t('farms.insights.ndvi')}: ${
+          insights.ndvi ? insights.ndvi.toFixed(2) : 'N/A'
+        }\n` +
+          `${t('weather.temperature')}: ${insights.temperature}°C\n` +
+          `${t('weather.humidity')}: ${insights.humidity}%\n` +
+          `${t('weather.windSpeed')}: ${insights.windSpeed} m/s\n` +
+          `Soil Moisture: ${(insights.soilMoisture * 100).toFixed(1)}%\n` +
+          `Soil Temperature: ${Math.round(insights.soilTemperature)}°C\n` +
+          `Weather: ${insights.weatherCondition}`,
+        [{ text: 'OK', onPress: () => setStep('form') }]
+      );
+
+      return polygon.id;
+    } catch (error) {
+      console.error('Error gathering insights:', error);
+      Alert.alert(t('common.error'), t('farms.insights.error'), [
+        {
+          text: t('common.cancel'),
+          onPress: () => setStep('form'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.retry'),
+          onPress: () => createPolygonAndGatherInsights(coordinates),
+        },
+      ]);
+      return null;
+    } finally {
+      setIsGatheringInsights(false);
+    }
   };
 
   const startDrawing = () => {
@@ -208,72 +326,75 @@ export default function AddFarmScreen() {
       setLoading(true);
 
       // Create polygon in AgroMonitoring API
-      const polygon = await agroMonitoringService.createPolygon(
-        formData.name,
-        farmLocation.geometry.coordinates
+      const polygonId = await createPolygonAndGatherInsights(
+        farmLocation.geometry.coordinates[0] // Get the first (and only) ring of coordinates
       );
 
-      // Add farm to local store
-      addFarm({
-        name: formData.name,
-        type:
-          formData.cropType === 'other'
-            ? ('Other' as const)
-            : ((formData.cropType.charAt(0).toUpperCase() +
-                formData.cropType.slice(1)) as
-                | 'Wheat'
-                | 'Rice'
-                | 'Corn'
-                | 'Other'),
-        area: farmLocation.properties.area,
-        location: {
-          latitude:
-            farmLocation.geometry.coordinates[0][
-              Math.floor(farmLocation.geometry.coordinates[0].length / 2)
-            ][1],
-          longitude:
-            farmLocation.geometry.coordinates[0][
-              Math.floor(farmLocation.geometry.coordinates[0].length / 2)
-            ][0],
-          address: '', // You might want to add reverse geocoding here
-        },
-        status: 'Healthy',
-        growthStage: {
-          days: 0,
-          stage: 'Seedling',
-          expectedHarvestDate: new Date(
-            formData.plantingDate.getTime() + 120 * 24 * 60 * 60 * 1000
-          ),
-          totalDuration: 120,
-        },
-        metrics: {
-          ndviScore: 0,
-          waterStress: { level: 'Low', value: 0 },
-          nitrogen: { value: 0, status: 'Adequate' },
-          diseaseRisk: { percentage: 0, status: 'Low' },
-          lastScanDate: new Date(),
-          lastSoilTest: new Date(),
-        },
-        weather: {
-          temperature: 0,
-          humidity: 0,
-          rainfall: 0,
+      if (polygonId) {
+        // Add farm to local store
+        addFarm({
+          name: formData.name,
+          type:
+            formData.cropType === 'other'
+              ? 'Other'
+              : ((formData.cropType.charAt(0).toUpperCase() +
+                  formData.cropType.slice(1)) as
+                  | 'Wheat'
+                  | 'Rice'
+                  | 'Corn'
+                  | 'Other'),
+          area: farmLocation.properties.area,
+          location: {
+            latitude: farmLocation.geometry.coordinates[0][0][1],
+            longitude: farmLocation.geometry.coordinates[0][0][0],
+            address: 'Custom Location',
+          },
+          status: 'Healthy',
+          growthStage: {
+            days: 0,
+            stage: 'Seedling',
+            expectedHarvestDate: new Date(
+              Date.now() + 120 * 24 * 60 * 60 * 1000
+            ),
+            totalDuration: 120,
+          },
+          metrics: {
+            ndviScore: 0,
+            waterStress: {
+              level: 'Low',
+              value: 0,
+            },
+            nitrogen: {
+              value: 0,
+              status: 'Adequate',
+            },
+            diseaseRisk: {
+              percentage: 0,
+              status: 'Low',
+            },
+            lastScanDate: new Date(),
+            lastSoilTest: new Date(),
+          },
+          weather: {
+            temperature: 0,
+            humidity: 0,
+            rainfall: 0,
+            lastUpdated: new Date(),
+          },
+          tasks: [],
           lastUpdated: new Date(),
-        },
-        tasks: [],
-        lastUpdated: new Date(),
-        plantingDate: formData.plantingDate,
-        icon: getCropIcon(formData.cropType),
-        notes: [],
-        agroPolygonId: polygon.id,
-      });
+          plantingDate: formData.plantingDate,
+          icon: getCropIcon(formData.cropType),
+          notes: [],
+          agroPolygonId: polygonId,
+        });
 
-      router.back();
+        router.back();
+      }
     } catch (error) {
-      Alert.alert(
-        t('common.error'),
-        error instanceof Error ? error.message : t('common.unknownError')
-      );
+      Alert.alert(t('common.error'), t('farms.insights.error'), [
+        { text: t('common.ok') },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -457,89 +578,110 @@ export default function AddFarmScreen() {
             </View>
           </View>
 
-          <MapView
-            ref={mapRef}
-            style={{ width: '100%', height: '100%' }}
-            provider={PROVIDER_DEFAULT}
-            mapType={Platform.select({ ios: mapType, android: undefined })}
-            initialRegion={getMapRegion()}
-            region={isFormStep(step) ? getMapRegion() : undefined}
-            onPress={handleMapPress}
-            scrollEnabled={!isDrawing}
-            zoomEnabled={!isDrawing}
-            rotateEnabled={!isDrawing}
-          >
-            {/* Draw markers for each point */}
-            {markers.map((marker, index) => (
-              <Marker
-                key={marker.id}
-                coordinate={marker.coordinate}
-                pinColor="#4d7c0f"
-                title={`Point ${index + 1}`}
-              >
-                <View className="items-center">
-                  <View className="bg-lima-600 rounded-full p-2 border-2 border-white">
-                    <Text className="text-white font-bold">{index + 1}</Text>
+          <View className="flex-1">
+            <MapView
+              ref={mapRef}
+              style={{ flex: 1 }}
+              initialRegion={getMapRegion()}
+              onPress={handleMapPress}
+              provider={PROVIDER_DEFAULT}
+              mapType={mapType}
+            >
+              {/* Markers */}
+              {markers.map((marker, index) => (
+                <Marker key={marker.id} coordinate={marker.coordinate}>
+                  <View className="items-center">
+                    <View className="bg-lima-600 rounded-full w-8 h-8 items-center justify-center border-2 border-white shadow">
+                      <Text className="text-white font-bold text-base">
+                        {index + 1}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </Marker>
-            ))}
+                </Marker>
+              ))}
 
-            {/* Draw lines between points */}
-            {coordinates.length > 1 && (
-              <Polyline
-                coordinates={coordinates}
-                strokeWidth={2}
-                strokeColor="#4d7c0f"
-              />
-            )}
-
-            {/* Draw the completed polygon if not in drawing mode */}
-            {!isDrawing && coordinates.length > 2 && (
-              <Polygon
-                coordinates={coordinates}
-                strokeWidth={2}
-                strokeColor="#4d7c0f"
-                fillColor="rgba(77, 124, 15, 0.2)"
-              />
-            )}
-          </MapView>
-
-          {/* Drawing controls */}
-          {step === 'draw' && (
-            <View className="absolute bottom-4 left-4 right-4 flex-row justify-between">
-              {isDrawing ? (
-                <>
-                  <TouchableOpacity
-                    className="bg-red-500 rounded-lg px-4 py-2"
-                    onPress={cancelDrawing}
-                  >
-                    <Text className="text-white font-medium">
-                      {t('common.cancel')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    className="bg-lima-600 rounded-lg px-4 py-2"
-                    onPress={completeDrawing}
-                    disabled={coordinates.length < 3}
-                  >
-                    <Text className="text-white font-medium">
-                      {t('common.done')}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  className="bg-lima-600 rounded-lg px-4 py-2 w-full"
-                  onPress={startDrawing}
-                >
-                  <Text className="text-white font-medium text-center">
-                    {t('map.startDrawing')}
-                  </Text>
-                </TouchableOpacity>
+              {/* Polyline connecting markers */}
+              {markers.length >= 2 && (
+                <Polyline
+                  coordinates={markers.map((marker) => marker.coordinate)}
+                  strokeColor="#4d7c0f"
+                  strokeWidth={2}
+                />
               )}
+
+              {/* Polygon fill when not in drawing mode */}
+              {!isDrawing && markers.length >= 3 && (
+                <Polygon
+                  coordinates={markers.map((marker) => marker.coordinate)}
+                  fillColor="rgba(77, 124, 15, 0.2)"
+                  strokeColor="#4d7c0f"
+                  strokeWidth={2}
+                />
+              )}
+            </MapView>
+
+            {/* Instructions Banner */}
+            <View className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm">
+              <View className="px-6 py-4">
+                <Text className="text-gray-700 text-center">
+                  {t('map.drawInstructions', {
+                    count: Math.max(0, 3 - markers.length),
+                  })}
+                </Text>
+              </View>
             </View>
-          )}
+
+            {/* Bottom Action Buttons */}
+            <View className="absolute bottom-8 left-6 right-6">
+              <View className="flex-row justify-between gap-4">
+                {isDrawing ? (
+                  <>
+                    <TouchableOpacity
+                      onPress={cancelDrawing}
+                      className="flex-1 flex-row items-center justify-center bg-red-500 py-3 rounded-xl shadow-sm"
+                    >
+                      <MaterialCommunityIcons
+                        name="close"
+                        size={24}
+                        color="white"
+                      />
+                      <Text className="text-white font-medium ml-2">
+                        {t('common.cancel')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={completeDrawing}
+                      className="flex-1 flex-row items-center justify-center bg-lima-600 py-3 rounded-xl shadow-sm"
+                      disabled={markers.length < 3}
+                    >
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={24}
+                        color="white"
+                      />
+                      <Text className="text-white font-medium ml-2">
+                        {t('common.done')}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    onPress={startDrawing}
+                    className="flex-1 flex-row items-center justify-center bg-lima-600 py-3 rounded-xl shadow-sm"
+                  >
+                    <MaterialCommunityIcons
+                      name="vector-polygon"
+                      size={24}
+                      color="white"
+                    />
+                    <Text className="text-white font-medium ml-2">
+                      {t('map.startDrawing')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
         </View>
       </View>
     );

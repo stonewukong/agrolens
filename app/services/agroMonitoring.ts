@@ -3,29 +3,44 @@ import axios from 'axios';
 const AGRO_API_KEY = process.env.EXPO_PUBLIC_AGRO_API_KEY;
 const BASE_URL = 'http://api.agromonitoring.com/agro/1.0';
 
-interface GeoJSON {
-  type: 'Feature';
-  properties: Record<string, any>;
-  geometry: {
-    type: 'Polygon';
-    coordinates: number[][][];
-  };
-}
-
 interface PolygonResponse {
   id: string;
-  geo_json: GeoJSON;
   name: string;
   center: [number, number];
   area: number;
   user_id: string;
+  created_at: string;
+}
+
+interface SoilData {
+  t10: number; // Temperature at 10cm depth
+  moisture: number; // Soil moisture
+  t0: number; // Surface temperature
+}
+
+interface WeatherData {
+  main: {
+    temp: number;
+    humidity: number;
+    pressure: number;
+  };
+  wind: {
+    speed: number;
+    deg: number;
+  };
+  weather: Array<{
+    id: number;
+    main: string;
+    description: string;
+    icon: string;
+  }>;
 }
 
 interface NDVIData {
-  dt: number;
-  dc: number;
-  cl: number;
-  value: number;
+  dt: number; // Timestamp
+  dc: number; // Cloud coverage percentage
+  cl: number; // Confidence level
+  value: number; // NDVI value
 }
 
 interface WeatherAlert {
@@ -54,18 +69,16 @@ class AgroMonitoringService {
     coordinates: number[][][]
   ): Promise<PolygonResponse> {
     try {
-      const geoJSON: GeoJSON = {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'Polygon',
-          coordinates,
-        },
-      };
-
-      const response = await this.api.post<PolygonResponse>('/polygons', {
+      const response = await this.api.post('/polygons', {
         name,
-        geo_json: geoJSON,
+        geo_json: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'Polygon',
+            coordinates,
+          },
+        },
       });
 
       return response.data;
@@ -82,22 +95,47 @@ class AgroMonitoringService {
     }
   }
 
+  async getSoilData(polygonId: string): Promise<SoilData> {
+    try {
+      const response = await this.api.get(`/soil?polyid=${polygonId}`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || 'Failed to fetch soil data'
+        );
+      }
+      throw error;
+    }
+  }
+
+  async getWeatherData(polygonId: string): Promise<WeatherData> {
+    try {
+      const response = await this.api.get(`/weather`, {
+        params: {
+          polyid: polygonId,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || 'Failed to fetch weather data'
+        );
+      }
+      throw error;
+    }
+  }
+
   async getVegetationIndex(
     polygonId: string,
     start: number,
     end: number
   ): Promise<NDVIData[]> {
     try {
-      const response = await this.api.get<NDVIData[]>(
-        `/ndvi/history/${polygonId}`,
-        {
-          params: {
-            start,
-            end,
-          },
-        }
-      );
-
+      const response = await this.api.get(`/ndvi/history/${polygonId}`, {
+        params: { start, end },
+      });
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -109,36 +147,41 @@ class AgroMonitoringService {
     }
   }
 
-  async getWeatherAlerts(polygonId: string): Promise<WeatherAlert[]> {
+  async getUVIndex(polygonId: string): Promise<number> {
     try {
-      const response = await this.api.get<WeatherAlert[]>(
-        `/weather/alerts/${polygonId}`
-      );
-      return response.data;
+      const response = await this.api.get(`/uvi/${polygonId}`);
+      return response.data.uvi;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
-          error.response?.data?.message || 'Failed to fetch weather alerts'
+          error.response?.data?.message || 'Failed to fetch UV index'
         );
       }
       throw error;
     }
   }
 
-  public async getSatelliteImage(
+  async getSatelliteImage(
     polygonId: string,
-    options: SatelliteImageOptions = {}
+    options: {
+      type?: 'ndvi' | 'evi' | 'true' | 'false';
+      start?: number;
+      end?: number;
+    } = {}
   ): Promise<string> {
     try {
       const { type = 'ndvi', start, end } = options;
+      const params: Record<string, any> = { type };
+      if (start) params.start = start;
+      if (end) params.end = end;
+
       const response = await this.api.get(`/image/search/${polygonId}`, {
-        params: {
-          type,
-          ...(start && { start }),
-          ...(end && { end }),
-        },
+        params,
       });
-      return response.data.image_url;
+      if (!response.data?.[0]?.image?.ndvi) {
+        throw new Error('No satellite image available');
+      }
+      return response.data[0].image.ndvi;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
