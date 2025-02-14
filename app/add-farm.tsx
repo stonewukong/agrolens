@@ -90,6 +90,7 @@ export default function AddFarmScreen() {
     soilType: 'loamy' as SoilType,
     irrigationMethod: 'drip' as IrrigationMethod,
     plantingDate: new Date(),
+    area: 0,
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [step, setStep] = useState<Step>('draw');
@@ -158,117 +159,129 @@ export default function AddFarmScreen() {
   };
 
   const handleMapPress = (e: MapPressEvent) => {
-    console.log('Map Pressed!');
-    console.log('isDrawing:', isDrawing);
-    console.log('Press coordinates:', e.nativeEvent.coordinate);
-    console.log('Current markers:', markers);
-
     if (!isDrawing) {
-      console.log('Not in drawing mode, ignoring press');
+      console.log('Not in drawing mode');
       return;
     }
 
-    const newMarker: MarkerType = {
+    const newMarker = {
       coordinate: e.nativeEvent.coordinate,
-      id: `marker-${Date.now()}-${Math.random()}`,
+      id: Math.random().toString(),
     };
 
+    console.log('Current markers:', markers);
     console.log('Adding new marker:', newMarker);
 
-    setMarkers((prev) => {
-      const newMarkers = [...prev, newMarker];
-      console.log('Updated markers array:', newMarkers);
+    const updatedMarkers = [...markers, newMarker];
+    setMarkers(updatedMarkers);
 
-      if (newMarkers.length === 4) {
-        console.log('Fourth point added, closing polygon');
-        const firstMarker: MarkerType = {
-          coordinate: prev[0].coordinate,
-          id: `marker-close-${Date.now()}`,
-        };
-        const closedMarkers = [...newMarkers, firstMarker];
-        console.log('Final closed markers:', closedMarkers);
+    // Update instructions based on remaining points needed
+    updateInstructionsText(updatedMarkers.length);
 
-        const coordinates = closedMarkers.map((marker) => [
-          marker.coordinate.longitude,
-          marker.coordinate.latitude,
-        ]);
-        console.log('Polygon coordinates:', coordinates);
+    // If we have 4 points, create the polygon
+    if (updatedMarkers.length === 4) {
+      console.log('Fourth point added, creating polygon');
+      const coordinates = updatedMarkers.map((marker) => [
+        marker.coordinate.longitude,
+        marker.coordinate.latitude,
+      ]);
 
-        createPolygonAndGatherInsights(coordinates);
-        return closedMarkers;
-      }
+      // Close the polygon by adding the first point again
+      const closedCoordinates = [...coordinates, coordinates[0]];
+      console.log('Closed coordinates:', closedCoordinates);
 
-      return newMarkers;
-    });
+      // Create polygon in AgroMonitoring API
+      createPolygon(closedCoordinates);
+    }
   };
 
-  // Function to create polygon and gather insights
-  const [isGatheringInsights, setIsGatheringInsights] = useState(false);
-
-  const createPolygonAndGatherInsights = async (coordinates: number[][]) => {
+  const createPolygon = async (coordinates: number[][]) => {
     try {
-      setIsGatheringInsights(true);
-
-      // Create the polygon first
-      const polygon = await agroMonitoringService.createPolygon(
+      setLoading(true);
+      const polygonResponse = await agroMonitoringService.createPolygon(
         'Farm Polygon',
         [coordinates]
       );
 
-      // Gather insights in parallel
-      const [weatherData, soilData, ndviData] = await Promise.all([
-        agroMonitoringService.getWeatherData(polygon.id),
-        agroMonitoringService.getSoilData(polygon.id),
-        agroMonitoringService.getVegetationIndex(
-          polygon.id,
-          Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60, // Last 7 days
-          Math.floor(Date.now() / 1000)
-        ),
-      ]);
+      // Convert hectares to acres
+      const areaInAcres = polygonResponse.area * 2.47105;
 
-      // Process the insights
-      const insights = {
-        ndvi: ndviData.length > 0 ? ndviData[ndviData.length - 1].value : null,
-        soilMoisture: soilData.moisture,
-        soilTemperature: soilData.t10,
-        temperature: Math.round(weatherData.main.temp),
-        humidity: weatherData.main.humidity,
-        windSpeed: Math.round(weatherData.wind.speed),
-        weatherCondition: weatherData.weather[0]?.main || 'Unknown',
+      // Create the GeoJSON location object
+      const location: GeoJSONFeature = {
+        type: 'Feature',
+        properties: {
+          name: 'Farm Polygon',
+          area: areaInAcres,
+          agroPolygonId: polygonResponse.id,
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [coordinates],
+        },
       };
 
-      // Show the insights to the user
+      setFarmLocation(location);
+      setIsDrawing(false);
+
+      // Show confirmation dialog with polygon details
       Alert.alert(
-        t('farms.insights.title'),
-        `${t('farms.insights.ndvi')}: ${
-          insights.ndvi ? insights.ndvi.toFixed(2) : 'N/A'
-        }\n` +
-          `${t('weather.temperature')}: ${insights.temperature}°C\n` +
-          `${t('weather.humidity')}: ${insights.humidity}%\n` +
-          `${t('weather.windSpeed')}: ${insights.windSpeed} m/s\n` +
-          `Soil Moisture: ${(insights.soilMoisture * 100).toFixed(1)}%\n` +
-          `Soil Temperature: ${Math.round(insights.soilTemperature)}°C\n` +
-          `Weather: ${insights.weatherCondition}`,
-        [{ text: 'OK', onPress: () => setStep('form') }]
+        'Polygon Created',
+        `Area: ${areaInAcres.toFixed(2)} acres\nPolygon ID: ${
+          polygonResponse.id
+        }`,
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              setStep('form');
+              // Pre-fill the area in the form
+              setFormData((prev) => ({
+                ...prev,
+                area: areaInAcres,
+              }));
+            },
+          },
+        ]
       );
 
-      return polygon.id;
+      return polygonResponse;
     } catch (error) {
-      console.error('Error gathering insights:', error);
-      Alert.alert(t('common.error'), t('farms.insights.error'), [
-        {
-          text: t('common.cancel'),
-          onPress: () => setStep('form'),
-          style: 'cancel',
-        },
-        {
-          text: t('common.retry'),
-          onPress: () => createPolygonAndGatherInsights(coordinates),
-        },
-      ]);
-      return null;
+      console.error('Error creating polygon:', error);
+      Alert.alert(
+        t('common.error'),
+        error instanceof Error ? error.message : 'Failed to create polygon'
+      );
+      // Reset markers to allow retry
+      setMarkers([]);
+      updateInstructionsText(0);
+      throw error;
     } finally {
-      setIsGatheringInsights(false);
+      setLoading(false);
+    }
+  };
+
+  // Add helper function to show area while drawing
+  const updateInstructionsText = (markerCount: number) => {
+    if (markerCount === 0) {
+      return t('map.drawInstructions', { count: 4 });
+    } else if (markerCount < 4) {
+      return t('map.drawInstructions', { count: 4 - markerCount });
+    } else {
+      // Calculate area for the current polygon
+      const coordinates = markers.map((marker) => ({
+        latitude: marker.coordinate.latitude,
+        longitude: marker.coordinate.longitude,
+      }));
+      const areaInAcres = calculateArea(coordinates);
+
+      // Show warning if area is too large (3000 hectares = 7413 acres)
+      if (areaInAcres > 7413) {
+        return `Selected area: ${areaInAcres.toFixed(
+          2
+        )} acres\nToo large! Maximum allowed: 7,413 acres`;
+      }
+
+      return `Selected area: ${areaInAcres.toFixed(2)} acres`;
     }
   };
 
@@ -283,32 +296,19 @@ export default function AddFarmScreen() {
   };
 
   const completeDrawing = () => {
-    if (coordinates.length < 3) {
+    if (markers.length < 3) {
       Alert.alert(t('common.error'), t('map.invalidPolygon'));
       return;
     }
 
+    const coordinates = markers.map((marker) => [
+      marker.coordinate.longitude,
+      marker.coordinate.latitude,
+    ]);
+
     // Close the polygon by adding the first point again
-    const closedCoordinates = [
-      ...coordinates.map((c) => [c.longitude, c.latitude]),
-      [coordinates[0].longitude, coordinates[0].latitude],
-    ];
-
-    const location: GeoJSONFeature = {
-      type: 'Feature',
-      properties: {
-        name: '',
-        area: calculateArea(coordinates),
-      },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [closedCoordinates],
-      },
-    };
-
-    setFarmLocation(location);
-    setIsDrawing(false);
-    setStep('form');
+    const closedCoordinates = [...coordinates, coordinates[0]];
+    createPolygon(closedCoordinates);
   };
 
   const handleSubmit = async () => {
@@ -325,10 +325,10 @@ export default function AddFarmScreen() {
 
       setLoading(true);
 
-      // Create polygon in AgroMonitoring API
-      const polygonId = await createPolygonAndGatherInsights(
-        farmLocation.geometry.coordinates[0] // Get the first (and only) ring of coordinates
-      );
+      // Create polygon in AgroMonitoring API if not already created
+      const polygonId =
+        farmLocation.properties.agroPolygonId ||
+        (await createPolygon(farmLocation.geometry.coordinates[0])).id;
 
       if (polygonId) {
         // Add farm to local store
@@ -343,7 +343,7 @@ export default function AddFarmScreen() {
                   | 'Rice'
                   | 'Corn'
                   | 'Other'),
-          area: farmLocation.properties.area,
+          area: formData.area,
           location: {
             latitude: farmLocation.geometry.coordinates[0][0][1],
             longitude: farmLocation.geometry.coordinates[0][0][0],
@@ -621,13 +621,37 @@ export default function AddFarmScreen() {
             </MapView>
 
             {/* Instructions Banner */}
-            <View className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm">
-              <View className="px-6 py-4">
-                <Text className="text-gray-700 text-center">
-                  {t('map.drawInstructions', {
-                    count: Math.max(0, 3 - markers.length),
-                  })}
-                </Text>
+            <View className="absolute mx-auto bottom-24 left-6 right-6">
+              <View className="bg-lima-300 backdrop-blur-lg px-6 py-4 rounded-2xl shadow-lg border border-lima-400">
+                <View className="flex-row items-center justify-center space-x-2">
+                  {markers.length < 3 ? (
+                    <MaterialCommunityIcons
+                      name="gesture-tap"
+                      size={20}
+                      color="#4d7c0f"
+                    />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name="map-marker-radius"
+                      size={20}
+                      color={
+                        calculateArea(coordinates) * 0.4047 > 3000
+                          ? '#dc2626'
+                          : '#4d7c0f'
+                      }
+                    />
+                  )}
+                  <Text
+                    className={`text-center text-base ${
+                      markers.length >= 3 &&
+                      calculateArea(coordinates) * 0.4047 > 3000
+                        ? 'text-red-600 font-semibold'
+                        : 'text-gray-700 font-medium'
+                    }`}
+                  >
+                    {updateInstructionsText(markers.length)}
+                  </Text>
+                </View>
               </View>
             </View>
 

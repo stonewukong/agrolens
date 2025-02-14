@@ -37,10 +37,21 @@ interface WeatherData {
 }
 
 interface NDVIData {
-  dt: number; // Timestamp
-  dc: number; // Cloud coverage percentage
-  cl: number; // Confidence level
-  value: number; // NDVI value
+  dt: number; // Acquisition date (Unix time, UTC)
+  source: string; // Satellite name (Landsat 8, Sentinel 2)
+  zoom: number; // Number of zoom level
+  dc: number; // Approximate useful area percentage
+  cl: number; // Approximate percentage of clouds
+  data: {
+    std: number; // Standard deviation
+    p75: number; // Third quartile value
+    min: number; // Minimum value
+    max: number; // Maximum value
+    median: number; // Median value
+    p25: number; // First quartile value
+    num: number; // Number of pixels
+    mean: number; // Average value
+  };
 }
 
 interface WeatherAlert {
@@ -133,12 +144,24 @@ class AgroMonitoringService {
     end: number
   ): Promise<NDVIData[]> {
     try {
-      const response = await this.api.get(`/ndvi/history/${polygonId}`, {
-        params: { start, end },
+      const response = await this.api.get(`/ndvi/history`, {
+        params: {
+          polyid: polygonId,
+          start,
+          end,
+        },
       });
+
+      if (!response.data || !Array.isArray(response.data)) {
+        throw new Error('Invalid NDVI data format received');
+      }
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        if (error.response?.status === 429) {
+          throw new Error('Rate limit exceeded. Please try again later.');
+        }
         throw new Error(
           error.response?.data?.message || 'Failed to fetch NDVI data'
         );
