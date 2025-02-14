@@ -227,14 +227,7 @@ export default function HomeScreen() {
         {/* Welcome Section */}
         <View className="pb-4">
           {/* Background Pattern */}
-          <View
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle at 2px 2px, #65a30d 1px, transparent 0)',
-              backgroundSize: '20px 20px',
-            }}
-          />
+          <View className="absolute inset-0 opacity-30" />
 
           {/* User Info */}
           <View className="px-6 pt-4 pb-2 relative">

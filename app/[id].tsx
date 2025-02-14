@@ -1,10 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useFarmStore } from '@/app/stores/useFarmStore';
 import { useTranslation } from 'react-i18next';
+import { agroMonitoringService } from '@/app/services/agroMonitoring';
 
 export default function FarmDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -19,7 +21,26 @@ export default function FarmDetailsScreen() {
   const { getFarmById } = useFarmStore();
   const farm = getFarmById(id as string);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [satelliteImage, setSatelliteImage] = React.useState<string | null>(
+    null
+  );
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const loadSatelliteImage = async () => {
+      if (farm?.agroPolygonId) {
+        try {
+          const imageUrl = await agroMonitoringService.getSatelliteImage(
+            farm.agroPolygonId
+          );
+          setSatelliteImage(imageUrl);
+        } catch (error) {
+          console.error('Failed to load satellite image:', error);
+        }
+      }
+    };
+    loadSatelliteImage();
+  }, [farm?.agroPolygonId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -243,6 +264,66 @@ export default function FarmDetailsScreen() {
                 })}
               </Text>
             </View>
+
+            {/* After Growth Timeline section */}
+            {farm?.agroPolygonId && (
+              <View className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 mb-4">
+                <View className="flex-row justify-between items-center mb-3">
+                  <Text className="text-base font-semibold text-gray-900">
+                    {t('farms.satellite.title')}
+                  </Text>
+                  <TouchableOpacity
+                    className="flex-row items-center"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/satellite-view',
+                        params: { id: farm.id },
+                      })
+                    }
+                  >
+                    <Text className="text-lima-600 text-sm mr-1">
+                      {t('common.viewAll')}
+                    </Text>
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={20}
+                      color="#4d7c0f"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {satelliteImage ? (
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: '/satellite-view',
+                        params: { id: farm.id },
+                      })
+                    }
+                  >
+                    <Image
+                      source={{ uri: satelliteImage }}
+                      className="w-full h-48 rounded-xl"
+                      resizeMode="cover"
+                    />
+                    <View className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded-lg">
+                      <Text className="text-white text-xs">NDVI</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <View className="w-full h-48 rounded-xl bg-gray-100 items-center justify-center">
+                    <MaterialCommunityIcons
+                      name="satellite-variant"
+                      size={32}
+                      color="#9ca3af"
+                    />
+                    <Text className="text-gray-500 text-sm mt-2">
+                      {t('farms.satellite.loading')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* Next Actions */}
             <View className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 mb-4">
