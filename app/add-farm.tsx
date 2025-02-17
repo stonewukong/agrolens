@@ -601,9 +601,12 @@ export default function AddFarmScreen() {
               ))}
 
               {/* Polyline connecting markers */}
-              {markers.length >= 2 && (
+              {markers.length >= 3 && (
                 <Polyline
-                  coordinates={markers.map((marker) => marker.coordinate)}
+                  coordinates={[
+                    ...markers.map((marker) => marker.coordinate),
+                    ...(markers.length >= 4 ? [markers[0].coordinate] : []),
+                  ]}
                   strokeColor="#4d7c0f"
                   strokeWidth={2}
                 />
