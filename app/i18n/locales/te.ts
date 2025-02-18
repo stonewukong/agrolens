@@ -104,7 +104,11 @@ export default {
   farms: {
     myFarms: 'నా పొలాలు',
     managing: '{{count}} యాక్టివ్ పొలాలను నిర్వహిస్తోంది',
+    noActiveFarms: 'ఇంకా యాక్టివ్ పొలాలు లేవు',
     addFarm: 'పొలం జోడించండి',
+    noFarmsYet: 'ఇంకా పొలాలు లేవు',
+    addYourFirstFarm:
+      'మీ మొదటి పొలాన్ని జోడించి దాని ఆరోగ్యం మరియు వృద్ధిని పర్యవేక్షించడం ప్రారంభించండి.',
     farmName: 'పొలం పేరు',
     farmNamePlaceholder: 'పొలం పేరు నమోదు చేయండి',
     cropType: 'పంట రకం',

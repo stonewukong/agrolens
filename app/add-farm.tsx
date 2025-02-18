@@ -27,6 +27,7 @@ import MapView, {
 } from 'react-native-maps';
 import { CropType, SoilType, IrrigationMethod } from '@/app/types/farm';
 import { useFarmStore } from '@/app/stores/useFarmStore';
+import useProfile from '@/app/hooks/useProfile';
 import * as Location from 'expo-location';
 
 interface SearchResult {
@@ -79,6 +80,7 @@ export default function AddFarmScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const addFarm = useFarmStore((state) => state.addFarm);
+  const { profile } = useProfile();
   const mapRef = useRef<MapView>(null);
 
   // Form and UI state
@@ -198,6 +200,13 @@ export default function AddFarmScreen() {
   const createPolygon = async (coordinates: number[][]) => {
     try {
       setLoading(true);
+      // Clear previous polygon state
+      setFarmLocation(null);
+      setFormData((prev) => ({
+        ...prev,
+        area: 0,
+      }));
+
       const polygonResponse = await agroMonitoringService.createPolygon(
         'Farm Polygon',
         [coordinates]
@@ -221,40 +230,15 @@ export default function AddFarmScreen() {
       };
 
       setFarmLocation(location);
-      setIsDrawing(false);
-
-      // Show confirmation dialog with polygon details
-      Alert.alert(
-        'Polygon Created',
-        `Area: ${areaInAcres.toFixed(2)} acres\nPolygon ID: ${
-          polygonResponse.id
-        }`,
-        [
-          {
-            text: 'Continue',
-            onPress: () => {
-              setStep('form');
-              // Pre-fill the area in the form
-              setFormData((prev) => ({
-                ...prev,
-                area: areaInAcres,
-              }));
-            },
-          },
-        ]
-      );
-
-      return polygonResponse;
+      setFormData((prev) => ({
+        ...prev,
+        area: areaInAcres,
+      }));
     } catch (error) {
       console.error('Error creating polygon:', error);
-      Alert.alert(
-        t('common.error'),
-        error instanceof Error ? error.message : 'Failed to create polygon'
-      );
       // Reset markers to allow retry
       setMarkers([]);
       updateInstructionsText(0);
-      throw error;
     } finally {
       setLoading(false);
     }
@@ -267,21 +251,19 @@ export default function AddFarmScreen() {
     } else if (markerCount < 4) {
       return t('map.drawInstructions', { count: 4 - markerCount });
     } else {
-      // Calculate area for the current polygon
-      const coordinates = markers.map((marker) => ({
-        latitude: marker.coordinate.latitude,
-        longitude: marker.coordinate.longitude,
-      }));
-      const areaInAcres = calculateArea(coordinates);
+      // If we have API area, use that, otherwise calculate
+      const areaToShow =
+        farmLocation?.properties.area || calculateArea(coordinates);
+      const areaInHectares = areaToShow / 2.47105;
 
       // Show warning if area is too large (3000 hectares = 7413 acres)
-      if (areaInAcres > 7413) {
-        return `Selected area: ${areaInAcres.toFixed(
-          2
-        )} acres\nToo large! Maximum allowed: 7,413 acres`;
+      if (areaInHectares > 3000) {
+        return `${t('farms.area')}: ${areaToShow.toFixed(2)} ${t(
+          'farms.acres'
+        )}\n${t('farms.areaLimit')}`;
       }
 
-      return `Selected area: ${areaInAcres.toFixed(2)} acres`;
+      return `${t('farms.area')}: ${areaToShow.toFixed(2)} ${t('farms.acres')}`;
     }
   };
 
@@ -296,10 +278,7 @@ export default function AddFarmScreen() {
   };
 
   const completeDrawing = () => {
-    if (markers.length < 3) {
-      Alert.alert(t('common.error'), t('map.invalidPolygon'));
-      return;
-    }
+    if (markers.length < 3) return;
 
     const coordinates = markers.map((marker) => [
       marker.coordinate.longitude,
@@ -313,6 +292,11 @@ export default function AddFarmScreen() {
 
   const handleSubmit = async () => {
     try {
+      if (!profile?.id) {
+        Alert.alert(t('common.error'), 'User not authenticated');
+        return;
+      }
+
       if (!farmLocation) {
         Alert.alert(t('common.error'), 'Please draw farm boundaries first.');
         return;
@@ -325,42 +309,48 @@ export default function AddFarmScreen() {
 
       setLoading(true);
 
-      // Create polygon in AgroMonitoring API if not already created
-      const polygonId =
-        farmLocation.properties.agroPolygonId ||
-        (await createPolygon(farmLocation.geometry.coordinates[0])).id;
+      // Get the polygon ID from the farmLocation
+      const polygonId = farmLocation.properties.agroPolygonId;
 
-      if (polygonId) {
-        // Add farm to local store
-        addFarm({
+      if (!polygonId) {
+        Alert.alert(
+          t('common.error'),
+          'Failed to create farm: Missing polygon ID'
+        );
+        return;
+      }
+
+      await addFarm(
+        {
           name: formData.name,
-          type:
-            formData.cropType === 'other'
-              ? 'Other'
-              : ((formData.cropType.charAt(0).toUpperCase() +
-                  formData.cropType.slice(1)) as
-                  | 'Wheat'
-                  | 'Rice'
-                  | 'Corn'
-                  | 'Other'),
+          crop_type: formData.cropType,
+          soil_type: formData.soilType,
+          irrigation_method: formData.irrigationMethod,
           area: formData.area,
           location: {
-            latitude: farmLocation.geometry.coordinates[0][0][1],
-            longitude: farmLocation.geometry.coordinates[0][0][0],
-            address: 'Custom Location',
+            type: 'Feature',
+            properties: {
+              name: formData.name,
+              area: formData.area,
+              agro_polygon_id: polygonId,
+            },
+            geometry: {
+              type: 'Polygon',
+              coordinates: farmLocation.geometry.coordinates,
+            },
           },
           status: 'Healthy',
-          growthStage: {
+          growth_stage: {
             days: 0,
             stage: 'Seedling',
-            expectedHarvestDate: new Date(
+            expected_harvest_date: new Date(
               Date.now() + 120 * 24 * 60 * 60 * 1000
             ),
-            totalDuration: 120,
+            total_duration: 120,
           },
           metrics: {
-            ndviScore: 0,
-            waterStress: {
+            ndvi_score: 0,
+            water_stress: {
               level: 'Low',
               value: 0,
             },
@@ -368,33 +358,32 @@ export default function AddFarmScreen() {
               value: 0,
               status: 'Adequate',
             },
-            diseaseRisk: {
+            disease_risk: {
               percentage: 0,
               status: 'Low',
             },
-            lastScanDate: new Date(),
-            lastSoilTest: new Date(),
+            last_scan_date: new Date(),
+            last_soil_test: new Date(),
           },
           weather: {
             temperature: 0,
             humidity: 0,
             rainfall: 0,
-            lastUpdated: new Date(),
+            last_updated: new Date(),
           },
           tasks: [],
-          lastUpdated: new Date(),
-          plantingDate: formData.plantingDate,
+          last_updated: new Date(),
+          planting_date: formData.plantingDate,
           icon: getCropIcon(formData.cropType),
           notes: [],
-          agroPolygonId: polygonId,
-        });
+          agro_polygon_id: polygonId,
+        },
+        profile.id
+      );
 
-        router.back();
-      }
+      router.back();
     } catch (error) {
-      Alert.alert(t('common.error'), t('farms.insights.error'), [
-        { text: t('common.ok') },
-      ]);
+      Alert.alert(t('common.error'), t('farms.insights.error'));
     } finally {
       setLoading(false);
     }
@@ -638,16 +627,22 @@ export default function AddFarmScreen() {
                       name="map-marker-radius"
                       size={20}
                       color={
-                        calculateArea(coordinates) * 0.4047 > 3000
+                        (farmLocation?.properties.area ||
+                          calculateArea(coordinates)) /
+                          2.47105 >
+                        3000
                           ? '#dc2626'
                           : '#4d7c0f'
                       }
                     />
                   )}
                   <Text
-                    className={`text-center text-base ${
+                    className={`text-center ${
                       markers.length >= 3 &&
-                      calculateArea(coordinates) * 0.4047 > 3000
+                      (farmLocation?.properties.area ||
+                        calculateArea(coordinates)) /
+                        2.47105 >
+                        3000
                         ? 'text-red-600 font-semibold'
                         : 'text-gray-700 font-medium'
                     }`}
@@ -677,7 +672,10 @@ export default function AddFarmScreen() {
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={completeDrawing}
+                      onPress={() => {
+                        completeDrawing();
+                        setStep('form');
+                      }}
                       className="flex-1 flex-row items-center justify-center bg-lima-600 py-3 rounded-xl shadow-sm"
                       disabled={markers.length < 3}
                     >
@@ -758,7 +756,7 @@ export default function AddFarmScreen() {
         </View>
 
         {/* Map Preview */}
-        {coordinates.length > 0 && (
+        {step === 'form' && coordinates.length > 0 && (
           <View className="px-6 mb-6">
             <View
               className="rounded-xl overflow-hidden border border-lima-200"
@@ -767,19 +765,12 @@ export default function AddFarmScreen() {
               <MapView
                 provider={PROVIDER_DEFAULT}
                 style={{ flex: 1 }}
-                initialRegion={{
-                  latitude:
-                    coordinates[Math.floor(coordinates.length / 2)].latitude,
-                  longitude:
-                    coordinates[Math.floor(coordinates.length / 2)].longitude,
-                  latitudeDelta: 0.05,
-                  longitudeDelta: 0.05,
-                }}
+                initialRegion={getMapRegion()}
                 scrollEnabled={false}
                 zoomEnabled={false}
               >
                 <Polygon
-                  coordinates={coordinates}
+                  coordinates={[...coordinates, coordinates[0]]}
                   fillColor="rgba(101, 163, 13, 0.2)"
                   strokeColor="#65a30d"
                   strokeWidth={2}
@@ -787,7 +778,7 @@ export default function AddFarmScreen() {
               </MapView>
               <View className="absolute bottom-2 right-2 bg-white px-3 py-1 rounded-full border border-lima-200">
                 <Text className="text-sm text-lima-700">
-                  {calculateArea(coordinates).toFixed(2)} {t('farms.acres')}
+                  {farmLocation?.properties.area.toFixed(2)} {t('farms.acres')}
                 </Text>
               </View>
             </View>

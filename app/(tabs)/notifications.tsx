@@ -18,7 +18,7 @@ export default function NotificationsScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-lima-50/10">
+    <SafeAreaView className="flex-1 bg-white">
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

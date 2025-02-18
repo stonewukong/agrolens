@@ -104,7 +104,11 @@ export default {
   farms: {
     myFarms: 'मेरे खेत',
     managing: '{{count}} सक्रिय खेतों का प्रबंधन',
+    noActiveFarms: 'अभी कोई सक्रिय खेत नहीं है',
     addFarm: 'खेत जोड़ें',
+    noFarmsYet: 'अभी तक कोई खेत नहीं',
+    addYourFirstFarm:
+      'अपना पहला खेत जोड़कर इसके स्वास्थ्य और विकास की निगरानी शुरू करें।',
     farmName: 'खेत का नाम',
     farmNamePlaceholder: 'खेत का नाम दर्ज करें',
     cropType: 'फसल का प्रकार',

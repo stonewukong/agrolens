@@ -80,17 +80,25 @@ class AgroMonitoringService {
     coordinates: number[][][]
   ): Promise<PolygonResponse> {
     try {
-      const response = await this.api.post('/polygons', {
-        name,
-        geo_json: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates,
+      const response = await this.api.post(
+        '/polygons',
+        {
+          name,
+          geo_json: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Polygon',
+              coordinates,
+            },
           },
         },
-      });
+        {
+          params: {
+            duplicated: true,
+          },
+        }
+      );
 
       return response.data;
     } catch (error) {
@@ -193,23 +201,56 @@ class AgroMonitoringService {
     } = {}
   ): Promise<string> {
     try {
-      const { type = 'ndvi', start, end } = options;
-      const params: Record<string, any> = { type };
-      if (start) params.start = start;
-      if (end) params.end = end;
+      const {
+        type = 'ndvi',
+        start = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
+        end = Math.floor(Date.now() / 1000),
+      } = options;
 
-      const response = await this.api.get(`/image/search/${polygonId}`, {
-        params,
+      // Step 1: Search for available imagery
+      const searchResponse = await this.api.get('/image/search', {
+        params: {
+          polyid: polygonId,
+          start,
+          end,
+          appid: process.env.EXPO_PUBLIC_AGRO_API_KEY,
+        },
       });
-      if (!response.data?.[0]?.image?.ndvi) {
-        throw new Error('No satellite image available');
+
+      if (
+        !searchResponse.data ||
+        !Array.isArray(searchResponse.data) ||
+        searchResponse.data.length === 0
+      ) {
+        throw new Error('No satellite images available for this period');
       }
-      return response.data[0].image.ndvi;
+
+      // Get the most recent image data
+      const imageData = searchResponse.data[0];
+
+      // Verify we have image URLs in the response
+      if (!imageData.image) {
+        throw new Error('No image data available in the response');
+      }
+
+      // Get the appropriate image URL based on the requested type
+      const imageUrl = imageData.image[type];
+      if (!imageUrl) {
+        throw new Error(`No ${type} image available`);
+      }
+
+      // Add palette parameter for NDVI images
+      if (type === 'ndvi') {
+        return `${imageUrl}&paletteid=1&width=1024&height=768`; // Using high resolution and default green palette
+      }
+
+      // Add high resolution parameters for other image types
+      return `${imageUrl}&width=1024&height=768`;
     } catch (error) {
+      console.error('Satellite image error:', error);
       if (axios.isAxiosError(error)) {
-        throw new Error(
-          error.response?.data?.message || 'Failed to fetch satellite image'
-        );
+        const message = error.response?.data?.message || error.message;
+        throw new Error(`Failed to fetch satellite image: ${message}`);
       }
       throw error;
     }

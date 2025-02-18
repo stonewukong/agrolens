@@ -87,7 +87,9 @@ export default function FarmsScreen() {
                   {t('farms.myFarms')}
                 </Text>
                 <Text className="text-sm text-lima-600 mt-1">
-                  {t('farms.managing', { count: farms.length })}
+                  {farms.length > 0
+                    ? t('farms.managing', { count: farms.length })
+                    : t('farms.noActiveFarms')}
                 </Text>
               </View>
               <TouchableOpacity
@@ -103,6 +105,27 @@ export default function FarmsScreen() {
         {/* Farm List */}
         {loading ? (
           <FarmListSkeleton />
+        ) : farms.length === 0 ? (
+          <View className="px-6 py-12 items-center">
+            <View className="bg-lima-50 p-4 rounded-full mb-4">
+              <MaterialCommunityIcons name="sprout" size={32} color="#4d7c0f" />
+            </View>
+            <Text className="text-gray-900 text-lg font-semibold text-center mb-2">
+              {t('farms.noFarmsYet')}
+            </Text>
+            <Text className="text-gray-600 text-center mb-6">
+              {t('farms.addYourFirstFarm')}
+            </Text>
+            <TouchableOpacity
+              className="bg-lima-700 px-6 py-3 rounded-xl flex-row items-center"
+              onPress={() => router.push('/add-farm')}
+            >
+              <MaterialCommunityIcons name="plus" size={20} color="white" />
+              <Text className="text-white font-medium ml-2">
+                {t('farms.addFarm')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View className="px-6">
             {farms.map((farm) => (
@@ -134,8 +157,9 @@ export default function FarmsScreen() {
                           {farm.name}
                         </Text>
                         <Text className="text-lima-600 text-sm">
-                          {farm.area} {t('farms.acres')} •{' '}
-                          {farm.growthStage.days} {t('home.days')}
+                          {farm.area.toFixed(2)} {t('farms.acres')} •{' '}
+                          {farm.growth_stage?.stage} • {farm.growth_stage?.days}{' '}
+                          {t('home.days')}
                         </Text>
                       </View>
                       <View
@@ -180,24 +204,24 @@ export default function FarmsScreen() {
                             {t('farms.metrics.ndviScore')}
                           </Text>
                           <Text className="text-base font-semibold text-lima-700">
-                            {farm.metrics.ndviScore}
+                            {farm.metrics?.ndvi_score ?? 0}
                           </Text>
                         </View>
                       </View>
                       <View className="flex-1 flex-row items-center">
-                        <View className="bg-blue-50 p-1.5 rounded-lg mr-2">
+                        <View className="bg-lima-50 p-1.5 rounded-lg mr-2">
                           <MaterialCommunityIcons
                             name="water"
                             size={16}
-                            color="#2563eb"
+                            color="#4d7c0f"
                           />
                         </View>
                         <View>
-                          <Text className="text-xs text-blue-600">
+                          <Text className="text-xs text-lima-600">
                             {t('farms.metrics.waterStress')}
                           </Text>
-                          <Text className="text-base font-semibold text-blue-700">
-                            {farm.metrics.waterStress.level}
+                          <Text className="text-base font-semibold text-lima-700">
+                            {farm.metrics?.water_stress?.value ?? 0}
                           </Text>
                         </View>
                       </View>
@@ -214,7 +238,7 @@ export default function FarmsScreen() {
                             {t('farms.metrics.diseaseRisk')}
                           </Text>
                           <Text className="text-base font-semibold text-yellow-700">
-                            {farm.metrics.diseaseRisk.percentage}%
+                            {farm.metrics?.disease_risk?.percentage ?? 0}%
                           </Text>
                         </View>
                       </View>

@@ -56,8 +56,12 @@ export default {
     profile: 'Profile',
   },
   home: {
+    welcome: 'Welcome back',
     activeFarms: 'Active Farms',
+    weather: 'Weather',
     quickActions: 'Quick Actions',
+    viewAll: 'View All',
+    days: 'days',
     analyzeCrops: 'Analyze Crops',
     analyzeCropsDesc: 'Run quick scan on active farms',
     irrigationStatus: 'Irrigation Status',
@@ -65,7 +69,6 @@ export default {
     diseaseDetection: 'Disease Detection',
     diseaseDetectionDesc: 'Scan for potential diseases',
     growthStage: 'Growth Stage',
-    days: 'Days',
   },
   weather: {
     windSpeed: 'Wind Speed',
@@ -104,7 +107,11 @@ export default {
   farms: {
     myFarms: 'My Farms',
     managing: 'Managing {{count}} active farms',
+    noActiveFarms: 'No active farms yet',
     addFarm: 'Add Farm',
+    noFarmsYet: 'No Farms Yet',
+    addYourFirstFarm:
+      'Get started by adding your first farm to monitor its health and growth.',
     farmName: 'Farm Name',
     farmNamePlaceholder: 'Enter farm name',
     cropType: 'Crop Type',

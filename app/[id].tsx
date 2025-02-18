@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useFarmStore } from '@/app/stores/useFarmStore';
 import { useTranslation } from 'react-i18next';
 import { agroMonitoringService } from '@/app/services/agroMonitoring';
+import NDVIViewer from '@/app/components/NDVIViewer';
 
 export default function FarmDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -28,10 +29,10 @@ export default function FarmDetailsScreen() {
 
   useEffect(() => {
     const loadSatelliteImage = async () => {
-      if (farm?.agroPolygonId) {
+      if (farm?.agro_polygon_id) {
         try {
           const imageUrl = await agroMonitoringService.getSatelliteImage(
-            farm.agroPolygonId
+            farm.agro_polygon_id
           );
           setSatelliteImage(imageUrl);
         } catch (error) {
@@ -40,7 +41,7 @@ export default function FarmDetailsScreen() {
       }
     };
     loadSatelliteImage();
-  }, [farm?.agroPolygonId]);
+  }, [farm?.agro_polygon_id]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -91,7 +92,7 @@ export default function FarmDetailsScreen() {
                     {farm.area} {t('farms.acres')} •{' '}
                     {t('farms.growthTimeline.currentStage', {
                       stage: t(
-                        `farms.stages.${farm.growthStage.stage.toLowerCase()}`
+                        `farms.stages.${farm.growth_stage.stage.toLowerCase()}`
                       ),
                     })}
                   </Text>
@@ -125,6 +126,20 @@ export default function FarmDetailsScreen() {
             </View>
           </View>
 
+          {/* NDVI Viewer */}
+          {farm?.agro_polygon_id && (
+            <View className="px-6 mb-6">
+              <NDVIViewer
+                polygonId={farm.agro_polygon_id}
+                farmId={farm.id}
+                onError={(error) => {
+                  console.error('NDVI Error:', error);
+                  // Optionally show an error message to the user
+                }}
+              />
+            </View>
+          )}
+
           {/* Content */}
           <View className="px-6">
             {/* Key Metrics */}
@@ -146,12 +161,12 @@ export default function FarmDetailsScreen() {
                     />
                   </View>
                   <Text className="text-2xl font-bold text-lima-700">
-                    {farm.metrics.ndviScore}
+                    {farm.metrics.ndvi_score}
                   </Text>
                   <Text className="text-lima-600 text-xs mt-1">
-                    {farm.metrics.ndviScore > 0.8
+                    {farm.metrics.ndvi_score > 0.8
                       ? t('farms.metrics.excellentHealth')
-                      : farm.metrics.ndviScore > 0.6
+                      : farm.metrics.ndvi_score > 0.6
                       ? t('farms.metrics.goodHealth')
                       : t('farms.metrics.needsAttention')}
                   </Text>
@@ -165,7 +180,7 @@ export default function FarmDetailsScreen() {
                     </Text>
                     <MaterialCommunityIcons
                       name={
-                        farm.metrics.waterStress.level === 'High'
+                        farm.metrics?.water_stress?.level === 'High'
                           ? 'water-alert'
                           : 'water'
                       }
@@ -175,11 +190,11 @@ export default function FarmDetailsScreen() {
                   </View>
                   <Text className="text-2xl font-bold text-blue-700">
                     {t(
-                      `weather.${farm.metrics.waterStress.level.toLowerCase()}`
+                      `weather.${farm.metrics.water_stress.level.toLowerCase()}`
                     )}
                   </Text>
                   <Text className="text-blue-600 text-xs mt-1">
-                    {farm.metrics.waterStress.value.toFixed(2)}{' '}
+                    {farm.metrics.water_stress.value.toFixed(2)}{' '}
                     {t('farms.metrics.index')}
                   </Text>
                 </View>
@@ -215,7 +230,7 @@ export default function FarmDetailsScreen() {
                     </Text>
                     <MaterialCommunityIcons
                       name={
-                        farm.metrics.diseaseRisk.status === 'Low'
+                        farm.metrics.disease_risk.status === 'Low'
                           ? 'shield-check'
                           : 'shield-alert'
                       }
@@ -224,11 +239,11 @@ export default function FarmDetailsScreen() {
                     />
                   </View>
                   <Text className="text-2xl font-bold text-yellow-700">
-                    {farm.metrics.diseaseRisk.percentage}%
+                    {farm.metrics.disease_risk.percentage}%
                   </Text>
                   <Text className="text-yellow-600 text-xs mt-1">
                     {t(
-                      `weather.${farm.metrics.diseaseRisk.status.toLowerCase()}`
+                      `weather.${farm.metrics.disease_risk.status.toLowerCase()}`
                     )}{' '}
                     {t('farms.metrics.riskLevel')}
                   </Text>
@@ -246,27 +261,27 @@ export default function FarmDetailsScreen() {
                   <View
                     className="h-full bg-lima-600 rounded-full"
                     style={{
-                      width: `${(farm.growthStage.days / 120) * 100}%`,
+                      width: `${(farm.growth_stage.days / 120) * 100}%`,
                     }}
                   />
                 </View>
                 <Text className="ml-3 text-lima-700 font-medium">
                   {t('farms.growthTimeline.daysOld', {
-                    days: farm.growthStage.days,
+                    days: farm.growth_stage.days,
                   })}
                 </Text>
               </View>
               <Text className="text-sm text-lima-600">
                 {t('farms.growthTimeline.currentStage', {
                   stage: t(
-                    `farms.stages.${farm.growthStage.stage.toLowerCase()}`
+                    `farms.stages.${farm.growth_stage.stage.toLowerCase()}`
                   ),
                 })}
               </Text>
             </View>
 
             {/* After Growth Timeline section */}
-            {farm?.agroPolygonId && (
+            {farm?.agro_polygon_id && (
               <View className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 mb-4">
                 <View className="flex-row justify-between items-center mb-3">
                   <Text className="text-base font-semibold text-gray-900">
@@ -331,7 +346,7 @@ export default function FarmDetailsScreen() {
                 {t('farms.actions.nextActions')}
               </Text>
               <View className="gap-3">
-                {farm.nextIrrigation && (
+                {farm.next_irrigation && (
                   <TouchableOpacity className="flex-row items-center bg-blue-50 p-3 rounded-xl">
                     <MaterialCommunityIcons
                       name="timer-outline"
@@ -343,7 +358,7 @@ export default function FarmDetailsScreen() {
                         {t('farms.actions.scheduledIrrigation')}
                       </Text>
                       <Text className="text-blue-600 text-sm">
-                        {new Date(farm.nextIrrigation).toLocaleDateString(
+                        {new Date(farm.next_irrigation).toLocaleDateString(
                           'en-US',
                           {
                             weekday: 'long',

@@ -1,8 +1,16 @@
 import { create } from 'zustand';
+import { databaseService } from '@/app/services/databaseService';
+import { agroMonitoringService } from '@/app/services/agroMonitoring';
+import type {
+  CropType,
+  SoilType,
+  IrrigationMethod,
+  FarmLocation,
+} from '@/app/types/farm';
 
 interface FarmMetrics {
-  ndviScore: number;
-  waterStress: {
+  ndvi_score: number;
+  water_stress: {
     level: 'Low' | 'Medium' | 'High';
     value: number;
   };
@@ -10,33 +18,33 @@ interface FarmMetrics {
     value: number;
     status: 'Low' | 'Adequate' | 'High';
   };
-  diseaseRisk: {
+  disease_risk: {
     percentage: number;
     status: 'Low' | 'Moderate' | 'High';
   };
-  lastScanDate: Date;
-  lastSoilTest: Date;
+  last_scan_date: Date;
+  last_soil_test: Date;
 }
 
 interface GrowthStage {
   days: number;
   stage: 'Seedling' | 'Vegetative' | 'Reproductive' | 'Maturity';
-  expectedHarvestDate: Date;
-  totalDuration: number; // in days
+  expected_harvest_date: Date;
+  total_duration: number; // in days
 }
 
 interface Weather {
   temperature: number;
   humidity: number;
   rainfall: number;
-  lastUpdated: Date;
+  last_updated: Date;
 }
 
 interface Task {
   id: string;
   title: string;
   description: string;
-  dueDate: Date;
+  due_date: Date;
   type: 'Irrigation' | 'Fertilization' | 'Pest Control' | 'Harvest' | 'Other';
   status: 'Pending' | 'Completed' | 'Overdue';
   priority: 'Low' | 'Medium' | 'High';
@@ -45,24 +53,45 @@ interface Task {
 interface Farm {
   id: string;
   name: string;
-  type: 'Wheat' | 'Rice' | 'Corn' | 'Other';
-  area: number; // in acres
-  location: {
-    latitude: number;
-    longitude: number;
-    address: string;
-  };
+  crop_type: CropType;
+  soil_type: SoilType;
+  irrigation_method: IrrigationMethod;
+  area: number;
+  location: FarmLocation;
   status: 'Healthy' | 'Needs Attention' | 'Critical';
-  growthStage: GrowthStage;
+  growth_stage: GrowthStage;
   metrics: FarmMetrics;
   weather: Weather;
   tasks: Task[];
-  lastUpdated: Date;
-  nextIrrigation?: Date;
-  plantingDate: Date;
+  last_updated: Date;
+  next_irrigation?: Date;
+  planting_date: Date;
   icon: 'grain' | 'sprout' | 'corn' | 'seed';
   notes: string[];
-  agroPolygonId?: string; // ID from AgroMonitoring API
+  agro_polygon_id?: string;
+  user_id?: string;
+  satellite_data?: {
+    ndvi_history: Array<{
+      date: string;
+      value: number;
+    }>;
+    last_ndvi_image?: string;
+    last_satellite_update?: string;
+  };
+  weather_data?: {
+    temperature: number;
+    humidity: number;
+    rainfall: number;
+    wind_speed: number;
+    last_update: string;
+  };
+  soil_data?: {
+    moisture: number;
+    temperature: number;
+    last_update: string;
+  };
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface FarmState {
@@ -71,9 +100,9 @@ interface FarmState {
   loading: boolean;
   error: string | null;
   setActiveFarm: (farmId: string) => void;
-  addFarm: (farm: Omit<Farm, 'id'>) => void;
-  updateFarm: (id: string, updates: Partial<Farm>) => void;
-  deleteFarm: (id: string) => void;
+  addFarm: (farm: Omit<Farm, 'id'>, userId: string) => Promise<void>;
+  updateFarm: (id: string, updates: Partial<Farm>) => Promise<void>;
+  deleteFarm: (id: string) => Promise<void>;
   getFarmById: (id: string) => Farm | undefined;
   addTask: (farmId: string, task: Omit<Task, 'id'>) => void;
   updateTask: (farmId: string, taskId: string, updates: Partial<Task>) => void;
@@ -81,7 +110,8 @@ interface FarmState {
   updateMetrics: (farmId: string, metrics: Partial<FarmMetrics>) => void;
   updateWeather: (farmId: string, weather: Weather) => void;
   addNote: (farmId: string, note: string) => void;
-  initializeFarms: () => Promise<void>;
+  refreshFarmData: (farmId: string) => Promise<void>;
+  initializeFarms: (userId: string) => Promise<void>;
 }
 
 export const useFarmStore = create<FarmState>((set, get) => ({
@@ -90,165 +120,109 @@ export const useFarmStore = create<FarmState>((set, get) => ({
   loading: false,
   error: null,
 
-  initializeFarms: async () => {
-    set({ loading: true });
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    set({
-      farms: [
-        {
-          id: '1',
-          name: 'Wheat Farm',
-          type: 'Wheat',
-          area: 2.5,
-          location: {
-            latitude: 28.6139,
-            longitude: 77.209,
-            address: 'Delhi, India',
-          },
-          status: 'Healthy',
-          growthStage: {
-            days: 45,
-            stage: 'Vegetative',
-            expectedHarvestDate: new Date('2024-06-15'),
-            totalDuration: 120,
-          },
-          metrics: {
-            ndviScore: 0.82,
-            waterStress: {
-              level: 'Low',
-              value: 0.3,
-            },
-            nitrogen: {
-              value: 42,
-              status: 'Adequate',
-            },
-            diseaseRisk: {
-              percentage: 12,
-              status: 'Low',
-            },
-            lastScanDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-            lastSoilTest: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
-          },
-          weather: {
-            temperature: 28,
-            humidity: 65,
-            rainfall: 0,
-            lastUpdated: new Date(),
-          },
-          tasks: [
-            {
-              id: 't1',
-              title: 'Scheduled Irrigation',
-              description: 'Regular irrigation cycle',
-              dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
-              type: 'Irrigation',
-              status: 'Pending',
-              priority: 'Medium',
-            },
-          ],
-          lastUpdated: new Date(),
-          nextIrrigation: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          plantingDate: new Date('2024-02-01'),
-          icon: 'grain',
-          notes: [
-            'Initial soil preparation completed',
-            'First fertilizer application done',
-          ],
-        },
-        {
-          id: '2',
-          name: 'Rice Farm',
-          type: 'Rice',
-          area: 1.8,
-          location: {
-            latitude: 28.6129,
-            longitude: 77.2295,
-            address: 'Delhi, India',
-          },
-          status: 'Needs Attention',
-          growthStage: {
-            days: 15,
-            stage: 'Seedling',
-            expectedHarvestDate: new Date('2024-07-30'),
-            totalDuration: 130,
-          },
-          metrics: {
-            ndviScore: 0.65,
-            waterStress: {
-              level: 'High',
-              value: 0.8,
-            },
-            nitrogen: {
-              value: 35,
-              status: 'Low',
-            },
-            diseaseRisk: {
-              percentage: 28,
-              status: 'Moderate',
-            },
-            lastScanDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-            lastSoilTest: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-          },
-          weather: {
-            temperature: 30,
-            humidity: 70,
-            rainfall: 2.5,
-            lastUpdated: new Date(),
-          },
-          tasks: [
-            {
-              id: 't2',
-              title: 'Apply Nitrogen Fertilizer',
-              description: 'Address low nitrogen levels',
-              dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-              type: 'Fertilization',
-              status: 'Pending',
-              priority: 'High',
-            },
-          ],
-          lastUpdated: new Date(),
-          nextIrrigation: new Date(Date.now() + 12 * 60 * 60 * 1000),
-          plantingDate: new Date('2024-03-15'),
-          icon: 'sprout',
-          notes: [
-            'Seedling transplantation completed',
-            'Water level needs monitoring',
-          ],
-        },
-      ],
-      activeFarmId: '1',
-      loading: false,
-    });
+  initializeFarms: async (userId: string) => {
+    try {
+      set({ loading: true, error: null });
+      const farms = await databaseService.getFarms(userId);
+      // Ensure last_updated is not undefined by providing a default Date
+      const farmsWithDefaultDate = farms.map((farm) => ({
+        ...farm,
+        last_updated: farm.last_updated || new Date(),
+      }));
+      set({ farms: farmsWithDefaultDate, loading: false });
+    } catch (error) {
+      set({ error: 'Failed to load farms', loading: false });
+    }
   },
 
   setActiveFarm: (farmId) => set({ activeFarmId: farmId }),
 
-  addFarm: (farm) => {
-    set((state) => ({
-      farms: [
-        ...state.farms,
+  addFarm: async (farm: Omit<Farm, 'id'>, userId: string) => {
+    try {
+      set({ loading: true, error: null });
+      const newFarm = await databaseService.createFarm(
         {
           ...farm,
-          id: Math.random().toString(36).substr(2, 9),
+          location: {
+            type: 'Feature',
+            properties: {
+              name: farm.name,
+              area: farm.area,
+            },
+            geometry: {
+              type: 'Polygon',
+              coordinates: farm.location.geometry.coordinates,
+            },
+          },
         },
-      ],
-    }));
+        userId
+      );
+
+      set((state) => {
+        const updatedFarms = [newFarm, ...state.farms].map((farm) => ({
+          ...farm,
+          last_updated: farm.last_updated || new Date(),
+        }));
+        return {
+          ...state,
+          farms: updatedFarms,
+          loading: false,
+        };
+      });
+    } catch (error) {
+      console.error('Error adding farm:', error);
+      set({
+        error: error instanceof Error ? error.message : 'Failed to add farm',
+        loading: false,
+      });
+    }
   },
 
-  updateFarm: (id, updates) => {
-    set((state) => ({
-      farms: state.farms.map((farm) =>
-        farm.id === id ? { ...farm, ...updates, lastUpdated: new Date() } : farm
-      ),
-    }));
+  updateFarm: async (id: string, updates: Partial<Farm>) => {
+    try {
+      set({ loading: true, error: null });
+      const updatedFarm = await databaseService.updateFarm(id, {
+        ...updates,
+        location: updates.location
+          ? {
+              type: 'Feature',
+              properties: {
+                name: updates.name || '',
+                area: updates.area || 0,
+              },
+              geometry: updates.location.geometry,
+            }
+          : undefined,
+      });
+
+      set((state) => ({
+        farms: state.farms.map((farm) =>
+          farm.id === id ? { ...farm, ...updatedFarm } : farm
+        ),
+        loading: false,
+      }));
+    } catch (error) {
+      console.error('Error updating farm:', error);
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update farm',
+        loading: false,
+      });
+    }
   },
 
-  deleteFarm: (id) => {
-    set((state) => ({
-      farms: state.farms.filter((farm) => farm.id !== id),
-      activeFarmId: state.activeFarmId === id ? null : state.activeFarmId,
-    }));
+  deleteFarm: async (id) => {
+    try {
+      set({ loading: true, error: null });
+      await databaseService.deleteFarm(id);
+      set((state) => ({
+        farms: state.farms.filter((farm) => farm.id !== id),
+        activeFarmId: state.activeFarmId === id ? null : state.activeFarmId,
+        loading: false,
+      }));
+    } catch (error) {
+      set({ error: 'Failed to delete farm', loading: false });
+      throw error;
+    }
   },
 
   getFarmById: (id) => {
@@ -342,5 +316,64 @@ export const useFarmStore = create<FarmState>((set, get) => ({
           : farm
       ),
     }));
+  },
+
+  refreshFarmData: async (farmId: string) => {
+    try {
+      const farm = get().farms.find((f) => f.id === farmId);
+      if (!farm || !farm.agro_polygon_id || !farm.user_id) {
+        throw new Error('Farm not found or missing required data');
+      }
+
+      // Fetch and update satellite data
+      const [ndviData, weatherData, soilData] = await Promise.all([
+        agroMonitoringService.getSatelliteImage(farm.agro_polygon_id, {
+          type: 'ndvi',
+        }),
+        agroMonitoringService.getWeatherData(farm.agro_polygon_id),
+        agroMonitoringService.getSoilData(farm.agro_polygon_id),
+      ]);
+
+      // Update satellite data in database
+      if (ndviData) {
+        await databaseService.updateSatelliteData(
+          farmId,
+          0.75, // You might want to calculate this from the image or get it from the API
+          ndviData
+        );
+      }
+
+      // Update weather data in database
+      if (weatherData) {
+        await databaseService.updateWeatherData(farmId, {
+          temperature: weatherData.main.temp,
+          humidity: weatherData.main.humidity,
+          rainfall: 0, // You might want to calculate this from weather data
+          wind_speed: weatherData.wind.speed,
+          last_update: new Date().toISOString(),
+        });
+      }
+
+      // Update soil data in database
+      if (soilData) {
+        await databaseService.updateSoilData(farmId, {
+          moisture: soilData.moisture,
+          temperature: soilData.t0,
+          last_update: new Date().toISOString(),
+        });
+      }
+
+      // Refresh farms data
+      const updatedFarms = await databaseService.getFarms(farm.user_id);
+      set({
+        farms: updatedFarms.map((farm) => ({
+          ...farm,
+          last_updated: farm.last_updated || new Date(), // Ensure last_updated is never undefined
+        })),
+      });
+    } catch (error) {
+      console.error('Error refreshing farm data:', error);
+      throw error;
+    }
   },
 }));

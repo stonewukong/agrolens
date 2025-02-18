@@ -42,91 +42,79 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = React.useCallback(() => {
+    if (!profile?.id) return;
     setRefreshing(true);
-    Promise.all([initializeFarms(), fetchWeather()]).finally(() => {
+    Promise.all([initializeFarms(profile.id), fetchWeather()]).finally(() => {
       setRefreshing(false);
     });
-  }, []);
+  }, [profile?.id]);
 
   useEffect(() => {
-    initializeFarms();
-    fetchWeather();
-  }, []);
+    if (profile?.id) {
+      initializeFarms(profile.id);
+      fetchWeather();
+    }
+  }, [profile?.id]);
 
   const WelcomeSkeleton = () => (
-    <View className="pb-4">
-      <View className="px-6 pt-4 pb-2">
-        <View className="flex-row justify-between items-center">
-          <View className="flex-1">
-            <Skeleton width={80} height={16} className="mb-2" />
-            <Skeleton width={180} height={28} className="mb-2" />
-            <Skeleton width={120} height={16} />
-          </View>
-          <View className="bg-lima-50 p-2 rounded-full">
-            <Skeleton width={40} height={40} borderRadius={20} />
-          </View>
-        </View>
-      </View>
+    <View className="px-6 py-4">
+      <Skeleton width={200} height={32} className="mb-2" />
+      <Skeleton width={150} height={20} />
     </View>
   );
 
   const WeatherSkeleton = () => (
-    <View className="bg-white rounded-2xl p-4 shadow-md border border-lima-100 mb-6">
-      <View className="flex-row items-start justify-between">
-        <View>
-          <Skeleton width={100} height={16} className="mb-2" />
-          <View className="flex-row items-center">
-            <Skeleton width={60} height={32} className="mr-2" />
-            <Skeleton width={80} height={16} />
+    <View className="px-6">
+      <Skeleton width={120} height={24} className="mb-4" />
+      <View className="bg-white rounded-2xl p-6 shadow-sm border border-lima-100">
+        <View className="flex-row items-start">
+          <Skeleton width={56} height={56} borderRadius={16} className="mr-4" />
+          <View className="flex-1">
+            <Skeleton width={140} height={28} className="mb-2" />
+            <Skeleton width={100} height={20} />
           </View>
         </View>
-        <Skeleton width={40} height={40} borderRadius={12} />
-      </View>
-      <View className="mt-4 pt-4 border-t border-gray-100">
-        <View className="mb-3">
-          <Skeleton width="100%" height={48} borderRadius={12} />
+        <View className="flex-row mt-6 gap-4">
+          <Skeleton width="30%" height={48} borderRadius={12} />
+          <Skeleton width="30%" height={48} borderRadius={12} />
+          <Skeleton width="30%" height={48} borderRadius={12} />
         </View>
-        <View className="mb-3">
-          <Skeleton width="100%" height={48} borderRadius={12} />
-        </View>
-        <Skeleton width="100%" height={48} borderRadius={12} />
       </View>
     </View>
   );
 
-  const FarmCardSkeleton = () => (
-    <View className="rounded-2xl p-4 border w-60 shadow-sm mr-3 bg-white border-lima-100">
+  const FarmCardSkeleton = ({ index }: { index: number }) => (
+    <View
+      key={index}
+      className="rounded-2xl p-4 border w-72 shadow-sm mr-3 bg-white border-lima-100"
+    >
       <View className="flex-row justify-between items-start mb-3">
         <View>
-          <Skeleton width={100} height={24} className="mb-2" />
+          <Skeleton width={120} height={24} className="mb-2" />
+          <View className="flex-row items-center">
+            <Skeleton width={40} height={16} className="mr-2" />
+            <Skeleton width={60} height={16} />
+          </View>
+        </View>
+        <Skeleton width={32} height={32} borderRadius={8} />
+      </View>
+      <View className="mt-3 pt-3 border-t border-lima-100">
+        <Skeleton width={100} height={16} className="mb-2" />
+        <View className="flex-row items-center">
+          <Skeleton width={40} height={20} className="mr-2" borderRadius={12} />
           <Skeleton width={60} height={16} />
         </View>
-        <Skeleton width={24} height={24} borderRadius={6} />
-      </View>
-      <View className="mt-2 pt-3 border-t border-lima-100">
-        <Skeleton width={80} height={12} className="mb-1" />
-        <Skeleton width={60} height={16} />
       </View>
     </View>
   );
 
   const QuickActionsSkeleton = () => (
-    <View className="gap-3">
-      {[1, 2, 3].map((i) => (
-        <View
-          key={i}
-          className="bg-white p-4 rounded-2xl border border-lima-100 shadow-sm"
-        >
-          <View className="flex-row items-center">
-            <Skeleton width={40} height={40} borderRadius={12} />
-            <View className="flex-1 ml-3">
-              <Skeleton width={120} height={20} className="mb-1" />
-              <Skeleton width={160} height={14} />
-            </View>
-            <Skeleton width={24} height={24} borderRadius={6} />
-          </View>
-        </View>
-      ))}
+    <View className="px-6">
+      <Skeleton width={120} height={24} className="mb-4" />
+      <View className="flex-row gap-4">
+        <Skeleton width="48%" height={120} borderRadius={16} />
+        <Skeleton width="48%" height={120} borderRadius={16} />
+      </View>
     </View>
   );
 
@@ -164,6 +152,145 @@ export default function HomeScreen() {
     )} ${dayNum}`;
   };
 
+  // Active Farms Section
+  const ActiveFarmsSection = () => {
+    const { farms } = useFarmStore();
+    const router = useRouter();
+    const { t } = useTranslation();
+
+    if (farms.length === 0) {
+      return (
+        <View className="mb-6 w-full">
+          <View className="flex-row w-full justify-between items-center mb-4">
+            <Text className="text-lg font-semibold text-gray-900">
+              {t('home.activeFarms')}
+            </Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <TouchableOpacity
+              onPress={() => router.push('/add-farm')}
+              className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 flex-row items-center w-[90vw]"
+            >
+              <View className="bg-lima-50 p-3 rounded-xl mr-4">
+                <MaterialCommunityIcons
+                  name="sprout"
+                  size={24}
+                  color="#4d7c0f"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-gray-900 font-semibold mb-1">
+                  {t('farms.noFarmsYet')}
+                </Text>
+                <Text className="text-gray-600 text-sm">
+                  {t('farms.addYourFirstFarm')}
+                </Text>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color="#4d7c0f"
+              />
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      );
+    }
+
+    return (
+      <View className="mb-6">
+        <View className=" flex-row justify-between items-center mb-4">
+          <Text className="text-lg font-semibold text-gray-900">
+            {t('home.activeFarms')}
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/farms')}
+            className="flex-row items-center"
+          >
+            <Text className="text-lima-600 mr-1">{t('common.viewAll')}</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={20}
+              color="#4d7c0f"
+            />
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {farmsLoading ? (
+            <>
+              <FarmCardSkeleton index={0} />
+              <FarmCardSkeleton index={1} />
+            </>
+          ) : (
+            farms.map((farm) => (
+              <TouchableOpacity
+                key={farm.id}
+                onPress={() =>
+                  router.push({
+                    pathname: '/[id]',
+                    params: { id: farm.id },
+                  })
+                }
+                className={`rounded-2xl p-4 border w-72 shadow-sm mr-3 ${
+                  activeFarmId === farm.id
+                    ? 'bg-lima-50 border-lima-200'
+                    : 'bg-white border-lima-100'
+                }`}
+              >
+                <View className="flex-row justify-between items-start mb-3">
+                  <View>
+                    <Text
+                      className={`text-lg font-bold ${
+                        activeFarmId === farm.id
+                          ? 'text-lima-700'
+                          : 'text-gray-900'
+                      }`}
+                    >
+                      {farm.name}
+                    </Text>
+                    <View className="flex-row items-center mt-1">
+                      <MaterialCommunityIcons
+                        name={farm.icon}
+                        size={16}
+                        color="#4d7c0f"
+                      />
+                      <Text className="text-lima-600 text-sm ml-1">
+                        {t(`crops.${farm.crop_type}`)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    className={`rounded-xl p-2 ${
+                      activeFarmId === farm.id ? 'bg-lima-100' : 'bg-lima-50'
+                    }`}
+                  >
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={20}
+                      color="#4d7c0f"
+                    />
+                  </View>
+                </View>
+                <View className="mt-3 pt-3 border-t border-lima-100">
+                  <View className="flex-row items-center">
+                    <View className="bg-lima-100 px-2 py-1 rounded-full mr-2">
+                      <Text className="text-lima-700 text-sm font-medium">
+                        {farm.area.toFixed(2)}
+                      </Text>
+                    </View>
+                    <Text className="text-gray-600 text-sm">
+                      {t('farms.acres')}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      </View>
+    );
+  };
+
   if (profileLoading || farmsLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white">
@@ -190,8 +317,8 @@ export default function HomeScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingRight: 24 }}
               >
-                <FarmCardSkeleton />
-                <FarmCardSkeleton />
+                <FarmCardSkeleton index={0} />
+                <FarmCardSkeleton index={1} />
               </ScrollView>
             </View>
 
@@ -489,106 +616,7 @@ export default function HomeScreen() {
           ) : null}
 
           {/* Farm Overview */}
-          <View className="mb-6">
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-lg font-semibold text-gray-900">
-                {t('home.activeFarms')}
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push('/(tabs)/farms')}
-                className="bg-lima-200 px-3 py-1 rounded-full flex-row items-center"
-              >
-                <Text className="text-lima-800 text-sm font-medium mr-1">
-                  {t('common.viewAll')}
-                </Text>
-                <MaterialCommunityIcons
-                  name="arrow-right"
-                  size={16}
-                  color="#3f6212"
-                />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingRight: 24 }}
-            >
-              {farmsLoading ? (
-                <>
-                  <FarmCardSkeleton />
-                  <FarmCardSkeleton />
-                </>
-              ) : (
-                farms.map((farm) => (
-                  <TouchableOpacity
-                    key={farm.id}
-                    onPress={() => setActiveFarm(farm.id)}
-                    className={`rounded-2xl p-4 border w-60 shadow-sm mr-3 ${
-                      activeFarmId === farm.id
-                        ? 'bg-lima-100 border-lima-200'
-                        : 'bg-white border-lima-200'
-                    }`}
-                  >
-                    <View className="flex-row justify-between items-start mb-3">
-                      <View>
-                        <Text
-                          className={`text-xl font-bold ${
-                            activeFarmId === farm.id
-                              ? 'text-lima-700'
-                              : 'text-lima-800'
-                          }`}
-                        >
-                          {farm.name}
-                        </Text>
-                        <Text
-                          className={
-                            activeFarmId === farm.id
-                              ? 'text-lima-600'
-                              : 'text-lima-700'
-                          }
-                        >
-                          {farm.area} {t('farms.acres')}
-                        </Text>
-                      </View>
-                      <MaterialCommunityIcons
-                        name={farm.icon}
-                        size={24}
-                        color={activeFarmId === farm.id ? '#3f6212' : '#3f6212'}
-                      />
-                    </View>
-                    <View
-                      className={`mt-2 pt-3 border-t ${
-                        activeFarmId === farm.id
-                          ? 'border-lima-200'
-                          : 'border-lima-100'
-                      }`}
-                    >
-                      <Text
-                        className={
-                          activeFarmId === farm.id
-                            ? 'text-lima-600'
-                            : 'text-lima-700'
-                        }
-                        style={{ fontSize: 12 }}
-                      >
-                        Growth Stage
-                      </Text>
-                      <Text
-                        className={`font-medium ${
-                          activeFarmId === farm.id
-                            ? 'text-lima-700'
-                            : 'text-lima-800'
-                        }`}
-                      >
-                        {farm.growthStage.days} Days
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </View>
+          <ActiveFarmsSection />
         </View>
 
         {/* Quick Stats - Updated Design */}
