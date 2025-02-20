@@ -330,7 +330,10 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         agroMonitoringService.getSatelliteImage(farm.agro_polygon_id, {
           type: 'ndvi',
         }),
-        agroMonitoringService.getWeatherData(farm.agro_polygon_id),
+        agroMonitoringService.getWeatherData(
+          farm.location.geometry.coordinates[0][0][1], // latitude
+          farm.location.geometry.coordinates[0][0][0] // longitude
+        ),
         agroMonitoringService.getSoilData(farm.agro_polygon_id),
       ]);
 

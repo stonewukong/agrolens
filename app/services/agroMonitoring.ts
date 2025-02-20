@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-const AGRO_API_KEY = process.env.EXPO_PUBLIC_AGRO_API_KEY;
 const BASE_URL = 'http://api.agromonitoring.com/agro/1.0';
+const AGRO_API_KEY = process.env.EXPO_PUBLIC_AGRO_API_KEY;
+const WEATHER_API_KEY = process.env.EXPO_PUBLIC_OPEN_WEATHER_API_KEY;
 
 interface PolygonResponse {
   id: string;
@@ -21,12 +22,17 @@ interface SoilData {
 interface WeatherData {
   main: {
     temp: number;
+    feels_like: number;
     humidity: number;
     pressure: number;
   };
   wind: {
     speed: number;
     deg: number;
+  };
+  rain?: {
+    '1h'?: number;
+    '3h'?: number;
   };
   weather: Array<{
     id: number;
@@ -61,10 +67,50 @@ interface WeatherAlert {
   severity: 'low' | 'medium' | 'high';
 }
 
+interface WeatherForecast {
+  dt: number;
+  main: {
+    temp: number;
+    temp_min: number;
+    temp_max: number;
+    humidity: number;
+    pressure: number;
+  };
+  weather: Array<{
+    id: number;
+    main: string;
+    description: string;
+    icon: string;
+  }>;
+  wind: {
+    speed: number;
+    deg: number;
+  };
+  clouds: {
+    all: number;
+  };
+  rain?: {
+    '3h': number;
+  };
+}
+
+interface AccumulatedTemperature {
+  dt: string;
+  temp: number;
+  count: number;
+}
+
+interface AccumulatedPrecipitation {
+  dt: string;
+  rain: number;
+  count: number;
+}
+
 export interface SatelliteImageOptions {
   type?: 'ndvi' | 'evi' | 'true' | 'false';
   start?: number;
   end?: number;
+  paletteid?: 1 | 2 | 3 | 4; // NDVI palette options from AgroMonitoring API
 }
 
 class AgroMonitoringService {
@@ -128,20 +174,20 @@ class AgroMonitoringService {
     }
   }
 
-  async getWeatherData(polygonId: string): Promise<WeatherData> {
+  async getWeatherData(lat: number, lon: number): Promise<WeatherData> {
     try {
-      const response = await this.api.get(`/weather`, {
-        params: {
-          polyid: polygonId,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(
-          error.response?.data?.message || 'Failed to fetch weather data'
-        );
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.EXPO_PUBLIC_OPEN_WEATHER_API_KEY}&units=metric`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch weather data');
       }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching weather data:', error);
       throw error;
     }
   }
@@ -154,7 +200,7 @@ class AgroMonitoringService {
     try {
       const response = await this.api.get(`/ndvi/history`, {
         params: {
-          polyid: polygonId,
+          polygon_id: polygonId,
           start,
           end,
         },
@@ -194,17 +240,14 @@ class AgroMonitoringService {
 
   async getSatelliteImage(
     polygonId: string,
-    options: {
-      type?: 'ndvi' | 'evi' | 'true' | 'false';
-      start?: number;
-      end?: number;
-    } = {}
+    options: SatelliteImageOptions = {}
   ): Promise<string> {
     try {
       const {
         type = 'ndvi',
         start = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
         end = Math.floor(Date.now() / 1000),
+        paletteid = 1,
       } = options;
 
       // Step 1: Search for available imagery
@@ -241,7 +284,7 @@ class AgroMonitoringService {
 
       // Add palette parameter for NDVI images
       if (type === 'ndvi') {
-        return `${imageUrl}&paletteid=1&width=1024&height=768`; // Using high resolution and default green palette
+        return `${imageUrl}&paletteid=${paletteid}&width=1024&height=768`; // Using high resolution and default green palette
       }
 
       // Add high resolution parameters for other image types
@@ -251,6 +294,112 @@ class AgroMonitoringService {
       if (axios.isAxiosError(error)) {
         const message = error.response?.data?.message || error.message;
         throw new Error(`Failed to fetch satellite image: ${message}`);
+      }
+      throw error;
+    }
+  }
+
+  async getForecastData(lat: number, lon: number): Promise<WeatherForecast[]> {
+    try {
+      const response = await axios.get(
+        `https://api.openweathermap.org/data/2.5/forecast`,
+        {
+          params: {
+            lat,
+            lon,
+            appid: WEATHER_API_KEY,
+            units: 'metric',
+          },
+        }
+      );
+      return response.data.list;
+    } catch (error) {
+      console.error('Forecast API Error:', error);
+      throw error;
+    }
+  }
+
+  async getAccumulatedTemperature(
+    lat: number,
+    lon: number,
+    start: number,
+    end: number,
+    threshold: number = 284
+  ): Promise<AccumulatedTemperature[]> {
+    try {
+      const response = await this.api.get(
+        '/weather/history/accumulated_temperature',
+        {
+          params: {
+            lat,
+            lon,
+            start,
+            end,
+            threshold,
+          },
+        }
+      );
+
+      if (!Array.isArray(response.data)) {
+        throw new Error(
+          'Invalid response format for accumulated temperature data'
+        );
+      }
+
+      return response.data.map((item: any) => ({
+        dt: new Date(item.dt * 1000).toISOString(),
+        temp: item.temp,
+        count: item.count || 1,
+      }));
+    } catch (error) {
+      console.error('Temperature API Error:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message ||
+            'Failed to fetch accumulated temperature data'
+        );
+      }
+      throw error;
+    }
+  }
+
+  async getAccumulatedPrecipitation(
+    lat: number,
+    lon: number,
+    start: number,
+    end: number
+  ): Promise<AccumulatedPrecipitation[]> {
+    try {
+      const response = await this.api.get(
+        '/weather/history/accumulated_precipitation',
+        {
+          params: {
+            lat,
+            lon,
+            start,
+            end,
+          },
+        }
+      );
+
+      if (!Array.isArray(response.data)) {
+        throw new Error(
+          'Invalid response format for accumulated precipitation data'
+        );
+      }
+
+      return response.data.map((item: any) => ({
+        dt: new Date(item.dt * 1000).toISOString(),
+        rain: item.rain || 0,
+        count: item.count || 1,
+      }));
+    } catch (error) {
+      console.error('Precipitation API Error:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message ||
+            'Failed to fetch accumulated precipitation data'
+        );
       }
       throw error;
     }

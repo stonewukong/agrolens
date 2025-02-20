@@ -7,6 +7,9 @@ export default function LanguageSelector() {
 
   const languages = [
     { code: 'en', name: 'English' },
+    { code: 'fr', name: 'Français' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'es', name: 'Español' },
     { code: 'hi', name: 'हिंदी' },
     { code: 'te', name: 'తెలుగు' },
   ];

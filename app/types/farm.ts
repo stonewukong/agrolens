@@ -116,11 +116,21 @@ export interface Farm {
 
 export interface Alert {
   id: string;
-  type: 'ndvi' | 'weather' | 'disease';
+  type:
+    | 'frost'
+    | 'heavy_rain'
+    | 'high_winds'
+    | 'low_soil_moisture'
+    | 'disease_risk'
+    | 'pest_risk'
+    | 'irrigation_needed'
+    | 'weather_alert';
   severity: 'low' | 'medium' | 'high';
   message: string;
   timestamp: Date;
   read: boolean;
+  farm_id: string;
+  created_at: string;
 }
 
 export interface NDVIHistory {

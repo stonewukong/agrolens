@@ -131,7 +131,7 @@ export default function FarmsScreen() {
             {farms.map((farm) => (
               <TouchableOpacity
                 key={farm.id}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-lima-100 mb-4"
+                className="bg-white rounded-2xl mb-4 overflow-hidden border border-lima-100/50 shadow-sm"
                 onPress={() =>
                   router.push({
                     pathname: '/[id]',
@@ -139,134 +139,219 @@ export default function FarmsScreen() {
                   })
                 }
               >
-                <View className="flex-row items-start">
-                  {/* Farm Icon */}
-                  <View className="bg-lima-50 p-3 rounded-xl">
-                    <MaterialCommunityIcons
-                      name={farm.icon}
-                      size={24}
-                      color="#4d7c0f"
-                    />
-                  </View>
-
-                  {/* Farm Info */}
-                  <View className="flex-1 ml-4">
-                    <View className="flex-row justify-between items-start">
-                      <View>
-                        <Text className="text-lg font-bold text-gray-900">
+                {/* Header Section */}
+                <View className="p-4 border-b border-lima-100/30">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center flex-1">
+                      <View className="bg-lima-50 p-2.5 rounded-xl mr-3">
+                        <MaterialCommunityIcons
+                          name={farm.icon}
+                          size={22}
+                          color="#4d7c0f"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-base font-bold text-gray-900 mb-0.5">
                           {farm.name}
                         </Text>
-                        <Text className="text-lima-600 text-sm">
-                          {farm.area.toFixed(2)} {t('farms.acres')} •{' '}
-                          {farm.growth_stage?.stage} • {farm.growth_stage?.days}{' '}
-                          {t('home.days')}
+                        <Text className="text-xs text-lima-600">
+                          {farm.area.toFixed(1)} {t('farms.acres')}
                         </Text>
                       </View>
-                      <View
-                        className={`px-2.5 py-1 rounded-full ${
+                    </View>
+                    <View
+                      className={`px-3 py-1.5 rounded-full ${
+                        farm.status === 'Healthy'
+                          ? 'bg-lime-50 border border-lime-200'
+                          : farm.status === 'Needs Attention'
+                          ? 'bg-amber-50 border border-amber-200'
+                          : 'bg-red-50 border border-red-200'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-medium ${
                           farm.status === 'Healthy'
-                            ? 'bg-lima-100'
+                            ? 'text-lime-700'
                             : farm.status === 'Needs Attention'
-                            ? 'bg-yellow-100'
-                            : 'bg-red-100'
+                            ? 'text-amber-700'
+                            : 'text-red-700'
                         }`}
                       >
-                        <Text
-                          className={`text-xs font-medium ${
-                            farm.status === 'Healthy'
-                              ? 'text-lima-700'
-                              : farm.status === 'Needs Attention'
-                              ? 'text-yellow-700'
-                              : 'text-red-700'
-                          }`}
-                        >
-                          {t(
-                            `farms.status.${farm.status
-                              .toLowerCase()
-                              .replace(' ', '')}`
-                          )}
+                        {t(
+                          `farms.status.${farm.status
+                            .toLowerCase()
+                            .replace(' ', '')}`
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Growth Stage Indicator */}
+                <View className="px-4 py-4 bg-lima-50/30">
+                  {/* Growth Info Cards */}
+                  <View className="flex-row w-full justify-between mb-4">
+                    {/* Days Counter */}
+                    <View className="bg-white/60  rounded-lg">
+                      <View className="flex-row items-center">
+                        <MaterialCommunityIcons
+                          name="calendar-range"
+                          size={14}
+                          color="#4d7c0f"
+                        />
+                        <Text className="text-xs font-medium text-lima-700 ml-1.5">
+                          {farm.growth_stage?.days} {t('home.days')}
                         </Text>
                       </View>
                     </View>
 
-                    {/* Quick Stats */}
-                    <View className="flex-row mt-4 gap-4">
-                      <View className="flex-1 flex-row items-center">
-                        <View className="bg-lima-50 p-1.5 rounded-lg mr-2">
+                    {/* Expected Harvest */}
+                    {farm.growth_stage?.expected_harvest_date && (
+                      <View className="bg-white/60  rounded-lg">
+                        <View className="flex-row items-center">
                           <MaterialCommunityIcons
-                            name="leaf"
-                            size={16}
+                            name="calendar-check"
+                            size={14}
                             color="#4d7c0f"
                           />
-                        </View>
-                        <View>
-                          <Text className="text-xs text-lima-600">
-                            {t('farms.metrics.ndviScore')}
-                          </Text>
-                          <Text className="text-base font-semibold text-lima-700">
-                            {farm.metrics?.ndvi_score ?? 0}
+                          <Text className="text-xs font-medium text-lima-700 ml-1.5">
+                            {t('farms.growthTimeline.expectedHarvest')}:{' '}
+                            {new Date(
+                              farm.growth_stage.expected_harvest_date
+                            ).toLocaleDateString()}
                           </Text>
                         </View>
                       </View>
-                      <View className="flex-1 flex-row items-center">
-                        <View className="bg-lima-50 p-1.5 rounded-lg mr-2">
-                          <MaterialCommunityIcons
-                            name="water"
-                            size={16}
-                            color="#4d7c0f"
-                          />
-                        </View>
-                        <View>
-                          <Text className="text-xs text-lima-600">
-                            {t('farms.metrics.waterStress')}
-                          </Text>
-                          <Text className="text-base font-semibold text-lima-700">
-                            {farm.metrics?.water_stress?.value ?? 0}
-                          </Text>
-                        </View>
-                      </View>
-                      <View className="flex-1 flex-row items-center">
-                        <View className="bg-yellow-50 p-1.5 rounded-lg mr-2">
-                          <MaterialCommunityIcons
-                            name="alert-circle-outline"
-                            size={16}
-                            color="#a16207"
-                          />
-                        </View>
-                        <View>
-                          <Text className="text-xs text-yellow-600">
-                            {t('farms.metrics.diseaseRisk')}
-                          </Text>
-                          <Text className="text-base font-semibold text-yellow-700">
-                            {farm.metrics?.disease_risk?.percentage ?? 0}%
-                          </Text>
-                        </View>
-                      </View>
+                    )}
+                  </View>
+
+                  {/* Growth Timeline */}
+                  <View className="mt-2">
+                    {/* Progress Bar */}
+                    <View className="h-2.5 bg-lima-100 rounded-full overflow-hidden">
+                      <View
+                        className="h-full bg-gradient-to-r from-lima-500 to-lima-600 rounded-full"
+                        style={{
+                          width: `${Math.min(
+                            ((new Date().getTime() -
+                              new Date(farm.planting_date).getTime()) /
+                              (new Date(
+                                farm.growth_stage?.expected_harvest_date
+                              ).getTime() -
+                                new Date(farm.planting_date).getTime())) *
+                              100,
+                            100
+                          )}%`,
+                        }}
+                      />
                     </View>
 
-                    {/* Action Buttons */}
-                    <View className="flex-row gap-2 mt-4">
-                      <TouchableOpacity className="flex-1 bg-lima-50 py-2 rounded-lg flex-row justify-center items-center">
-                        <MaterialCommunityIcons
-                          name="chart-line"
-                          size={16}
-                          color="#4d7c0f"
-                        />
-                        <Text className="text-lima-700 font-medium text-sm ml-1">
-                          {t('farms.actions.analytics')}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity className="flex-1 bg-lima-50 py-2 rounded-lg flex-row justify-center items-center">
-                        <MaterialCommunityIcons
-                          name="cog"
-                          size={16}
-                          color="#4d7c0f"
-                        />
-                        <Text className="text-lima-700 font-medium text-sm ml-1">
-                          {t('farms.actions.manage')}
-                        </Text>
-                      </TouchableOpacity>
+                    {/* Stage Markers */}
+                    <View className="flex-row justify-between mt-2">
+                      {[
+                        'Seedling',
+                        'Vegetative',
+                        'Reproductive',
+                        'Maturity',
+                      ].map((stage, index) => {
+                        const isCurrentStage =
+                          farm.growth_stage?.stage === stage;
+                        const isPastStage =
+                          [
+                            'Seedling',
+                            'Vegetative',
+                            'Reproductive',
+                            'Maturity',
+                          ].indexOf(farm.growth_stage?.stage) > index;
+
+                        return (
+                          <View
+                            key={stage}
+                            className="items-center"
+                            style={{ width: '25%' }}
+                          >
+                            <View
+                              className={`size-2 rounded-full mb-1.5 ${
+                                isCurrentStage
+                                  ? 'bg-lima-600 ring-2 ring-lima-200'
+                                  : isPastStage
+                                  ? 'bg-lima-600'
+                                  : 'bg-lima-200'
+                              }`}
+                            />
+                            <Text
+                              className={`text-[10px] ${
+                                isCurrentStage
+                                  ? 'text-lima-700 font-medium'
+                                  : 'text-lima-500'
+                              }`}
+                            >
+                              {t(`farms.stages.${stage.toLowerCase()}`)}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
+                  </View>
+                </View>
+
+                {/* Quick Stats Grid */}
+                <View className="p-4 flex-row gap-2">
+                  {/* NDVI Score */}
+                  <View className="bg-white p-3 rounded-xl border border-lima-100/50">
+                    <View className="flex-row items-center mb-1.5">
+                      <MaterialCommunityIcons
+                        name="leaf"
+                        size={14}
+                        color="#4d7c0f"
+                      />
+                      <Text className="text-xs text-lima-600 ml-1">
+                        {t('farms.metrics.ndviScore')}
+                      </Text>
+                    </View>
+                    <Text className="text-sm font-semibold text-lima-700">
+                      {farm.satellite_data?.ndvi_history?.[0]?.value?.toFixed(
+                        2
+                      ) ?? 'N/A'}
+                    </Text>
+                  </View>
+
+                  {/* Temperature */}
+                  <View className="bg-white p-3 rounded-xl border border-lima-100/50">
+                    <View className="flex-row items-center mb-1.5">
+                      <MaterialCommunityIcons
+                        name="thermometer"
+                        size={14}
+                        color="#4d7c0f"
+                      />
+                      <Text className="text-xs text-lima-600 ml-1">
+                        {t('weather.current')}
+                      </Text>
+                    </View>
+                    <Text className="text-sm font-semibold text-lima-700">
+                      {farm.weather_data?.temperature
+                        ? `${farm.weather_data.temperature}°C`
+                        : 'N/A'}
+                    </Text>
+                  </View>
+
+                  {/* Soil Moisture */}
+                  <View className="bg-white p-3 rounded-xl border border-lima-100/50">
+                    <View className="flex-row items-center mb-1.5">
+                      <MaterialCommunityIcons
+                        name="water-percent"
+                        size={14}
+                        color="#4d7c0f"
+                      />
+                      <Text className="text-xs text-lima-600 ml-1">
+                        {t('weather.soilMoisture.title')}
+                      </Text>
+                    </View>
+                    <Text className="text-sm font-semibold text-lima-700">
+                      {farm.soil_data?.moisture
+                        ? `${(farm.soil_data.moisture * 100).toFixed(0)}%`
+                        : 'N/A'}
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>

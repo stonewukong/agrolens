@@ -4,12 +4,18 @@ import { InitOptions } from 'i18next';
 import en from './locales/en';
 import hi from './locales/hi';
 import te from './locales/te';
+import fr from './locales/fr';
+import de from './locales/de';
+import es from './locales/es';
 
 const i18nConfig: InitOptions = {
   resources: {
     en: { translation: en },
     hi: { translation: hi },
     te: { translation: te },
+    fr: { translation: fr },
+    de: { translation: de },
+    es: { translation: es },
   },
   lng: 'en', // default language
   fallbackLng: 'en',

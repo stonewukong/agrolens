@@ -11,6 +11,7 @@ import { agroMonitoringService } from '@/app/services/agroMonitoring';
 import { databaseService } from '@/app/services/databaseService';
 import { useTranslation } from 'react-i18next';
 import { useFarmStore } from '@/app/stores/useFarmStore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface NDVIViewerProps {
   polygonId: string;
@@ -40,6 +41,7 @@ export default function NDVIViewer({
         polygonId,
         {
           type: 'ndvi',
+          paletteid: 1, // Using the default green NDVI palette
         }
       );
 
@@ -82,6 +84,56 @@ export default function NDVIViewer({
   const handleManualRefresh = () => {
     fetchNDVIData();
   };
+
+  const NDVILegend = () => (
+    <View className="bg-white rounded-xl p-4 mt-4 border border-lima-100">
+      <Text className="text-sm font-medium text-gray-900 mb-3">
+        {t('farms.satellite.ndviLegend')}
+      </Text>
+      <View className="h-3 rounded-full overflow-hidden mb-3">
+        <LinearGradient
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          colors={[
+            '#d7191c', // Very low NDVI (-1.0 to 0.0)
+            '#fdae61', // Low NDVI (0.0 to 0.2)
+            '#ffffbf', // Moderate NDVI (0.2 to 0.4)
+            '#a6d96a', // High NDVI (0.4 to 0.6)
+            '#1a9641', // Very high NDVI (0.6 to 1.0)
+          ]}
+          className="w-full h-full"
+        />
+      </View>
+      <View className="flex-row justify-between">
+        <Text className="text-xs text-gray-600">-1.0</Text>
+        <Text className="text-xs text-gray-600">0.0</Text>
+        <Text className="text-xs text-gray-600">0.2</Text>
+        <Text className="text-xs text-gray-600">0.4</Text>
+        <Text className="text-xs text-gray-600">0.6</Text>
+        <Text className="text-xs text-gray-600">1.0</Text>
+      </View>
+      <View className="flex-row justify-between mt-2">
+        <View className="items-center">
+          <Text className="text-xs text-gray-500">{t('weather.low')}</Text>
+          <Text className="text-xs text-gray-400">
+            {t('farms.satellite.unhealthy')}
+          </Text>
+        </View>
+        <View className="items-center">
+          <Text className="text-xs text-gray-500">{t('weather.moderate')}</Text>
+          <Text className="text-xs text-gray-400">
+            {t('farms.satellite.moderate')}
+          </Text>
+        </View>
+        <View className="items-center">
+          <Text className="text-xs text-gray-500">{t('weather.high')}</Text>
+          <Text className="text-xs text-gray-400">
+            {t('farms.satellite.healthy')}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
 
   if (loading) {
     return (
@@ -160,32 +212,8 @@ export default function NDVIViewer({
             )}
           </View>
 
-          {/* Legend */}
-          <View className="bg-gray-50 p-3 rounded-lg">
-            <Text className="text-sm text-gray-600 mb-2">
-              {t('farms.satellite.ndviDesc')}
-            </Text>
-            <View className="flex-row justify-between items-center">
-              <View className="flex-row items-center">
-                <View className="w-4 h-4 rounded bg-red-500 mr-1" />
-                <Text className="text-xs text-gray-600">
-                  {t('weather.low')}
-                </Text>
-              </View>
-              <View className="flex-row items-center">
-                <View className="w-4 h-4 rounded bg-yellow-500 mr-1" />
-                <Text className="text-xs text-gray-600">
-                  {t('weather.moderate')}
-                </Text>
-              </View>
-              <View className="flex-row items-center">
-                <View className="w-4 h-4 rounded bg-green-500 mr-1" />
-                <Text className="text-xs text-gray-600">
-                  {t('weather.high')}
-                </Text>
-              </View>
-            </View>
-          </View>
+          {/* NDVI Legend */}
+          <NDVILegend />
         </View>
       ) : (
         <View className="items-center justify-center py-8">
